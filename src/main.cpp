@@ -24,6 +24,7 @@
 //    "pause-color":          [r,g,b]         tint of the pause-menu panel
 //    "pause-hide-background": true           no dark panel behind the pause menu
 //    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
+//    "loading-sound-day" / "loading-sound-night": "a.ogg"   looping sounds that crossfade with loading progress
 //    "tint-swaps":           [{"texture":"GJ_progressBar_001","from":[0,255,0],"to":[r,g,b]}]  swap a colour GD tints a picture with
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log menu layouts + where brown tints come from (for pack makers)
@@ -104,6 +105,62 @@ static std::optional<ccColor3B> fpColorKey(matjson::Value const& j, char const* 
 // ---------------------------------------------------------------------------
 // Background node: runs a Menu-Shaders-style fragment shader full screen.
 //   uniforms: vec2 resolution, float time, sampler2D sprite0..N ("//@a.png,b.png")
+// --- loading ambience: a day loop and a night loop that crossfade with loading progress ---
+// pack keys "loading-sound-day" / "loading-sound-night" (looping sounds)
+static FMOD::Sound* s_ambSnd[2] = { nullptr, nullptr };
+static FMOD::Channel* s_ambCh[2] = { nullptr, nullptr };
+static float s_ambLevel[2] = { 0.f, 0.f };
+static float s_bgTime = 0.f;      // shared shader clock, so the menu carries on from the loading screen
+static float fpSmooth(float a, float b, float x) { float t = std::clamp((x - a) / (b - a), 0.f, 1.f); return t * t * (3.f - 2.f * t); }
+static void fpAmbStop() {
+    for (int i = 0; i < 2; i++) {
+        if (s_ambCh[i]) s_ambCh[i]->stop();
+        if (s_ambSnd[i]) s_ambSnd[i]->release();
+        s_ambCh[i] = nullptr; s_ambSnd[i] = nullptr;
+    }
+}
+static void fpAmbApply(float scale) {
+    auto fm = FMODAudioEngine::get();
+    float v = fm ? fm->m_sfxVolume : 0.f;
+    for (int i = 0; i < 2; i++) if (s_ambCh[i]) s_ambCh[i]->setVolume(v * s_ambLevel[i] * scale);
+}
+static void fpAmbStart(matjson::Value const& j) {
+    fpAmbStop();
+    auto fm = FMODAudioEngine::get();
+    if (!fm || !fm->m_system || fm->m_sfxVolume <= 0.f) return;
+    char const* keys[2] = { "loading-sound-day", "loading-sound-night" };
+    for (int i = 0; i < 2; i++) {
+        auto path = fpFullPath(fpStr(j, keys[i]));
+        if (path.empty()) continue;
+        if (fm->m_system->createSound(path.c_str(), FMOD_LOOP_NORMAL | FMOD_2D, nullptr, &s_ambSnd[i]) != FMOD_OK) { s_ambSnd[i] = nullptr; continue; }
+        if (fm->m_system->playSound(s_ambSnd[i], nullptr, true, &s_ambCh[i]) != FMOD_OK) { s_ambCh[i] = nullptr; continue; }
+        s_ambLevel[i] = i == 0 ? 1.f : 0.f;
+    }
+    fpAmbApply(1.f);
+    for (int i = 0; i < 2; i++) if (s_ambCh[i]) s_ambCh[i]->setPaused(false);
+}
+// matches the loading shader: day fades out as the sky turns, night comes in for the last stretch
+static void fpAmbProgress(float p) {
+    s_ambLevel[0] = 1.f - fpSmooth(0.50f, 0.90f, p);
+    s_ambLevel[1] = fpSmooth(0.60f, 0.95f, p);
+    fpAmbApply(1.f);
+}
+// on the menu: the night sound carries on, then fades away
+class FPAmbFade : public CCNode {
+public:
+    float m_t = 0.f, m_len = 6.f;
+    static FPAmbFade* create() { auto r = new FPAmbFade(); r->init(); r->autorelease(); r->scheduleUpdate(); return r; }
+    void update(float dt) override {
+        m_t += dt;
+        float g = std::min(1.f, dt * 4.f);
+        s_ambLevel[0] += (0.f - s_ambLevel[0]) * g;
+        s_ambLevel[1] += (1.f - s_ambLevel[1]) * g;
+        float k = std::clamp(1.f - std::max(0.f, m_t - 1.5f) / (m_len - 1.5f), 0.f, 1.f);
+        fpAmbApply(k * k);
+        if (m_t >= m_len) { fpAmbStop(); this->removeFromParent(); }
+    }
+};
+
 class FPBackground : public CCNode {
 public:
     CCGLProgram* m_prog = nullptr;
@@ -168,6 +225,7 @@ public:
         }
         this->setContentSize(CCDirector::get()->getWinSize());
         this->setID("background"_spr);
+        m_time = s_bgTime;
         this->scheduleUpdate();
         return true;
     }
@@ -175,8 +233,11 @@ public:
     void update(float dt) override {
         m_time += dt;
         // ease towards the real progress so scenes change smoothly, not in jumps
-        m_progress += (m_progressTarget - m_progress) * std::min(1.f, dt * 2.5f);
+        m_progress += (m_progressTarget - m_progress) * std::min(1.f, dt * (m_progressTarget >= 0.999f ? 8.f : 2.5f));
+        s_bgTime = m_time;
+        if (m_isLoading) fpAmbProgress(m_progress);
     }
+    bool m_isLoading = false;
     void draw() override {
         if (!m_prog) return;
         ccGLUseProgram(m_prog->getProgram());
@@ -353,6 +414,8 @@ class $modify(FPLoadingLayer, LoadingLayer) {
         if (!shader.empty()) {
             if (auto bg = FPBackground::create(shader)) {
                 bg->setID("loading-shader"_spr);
+                bg->m_isLoading = true;
+                fpAmbStart(j);
                 if (oldBg) oldBg->setVisible(false);
                 this->addChild(bg, minZ - 1);
                 return true;
@@ -701,6 +764,11 @@ class $modify(FPMenuLayer, MenuLayer) {
 
         // check GitHub for a newer version (once per launch)
         fpCheckForUpdate();
+
+        // loading ambience: night sound carries over into the menu, then fades out
+        if (s_ambCh[0] || s_ambCh[1]) {
+            this->addChild(FPAmbFade::create());
+        }
 
         // startup intro, once per launch
         static bool s_introPlayed = false;
