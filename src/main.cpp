@@ -25,6 +25,10 @@
 //    "pause-hide-background": true           no dark panel behind the pause menu
 //    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
 //    "loading-sound-day" / "loading-sound-night": "a.ogg"   looping sounds that crossfade with loading progress
+//                            (or just put ambience/day.ogg + ambience/night.ogg in the pack)
+//    "menu-music":           "song.mp3"      the pack's own menu music, from the start-up screen through every menu
+//                            (or just put music/menu.mp3 in the pack)
+//    "startup-intro" / "startup-sound": or just put intro/intro.webp + intro/intro.mp3 in the pack
 //    "tint-swaps":           [{"texture":"GJ_progressBar_001","from":[0,255,0],"to":[r,g,b]}]  swap a colour GD tints a picture with
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log menu layouts + where brown tints come from (for pack makers)
@@ -92,6 +96,19 @@ static bool fpBool(matjson::Value const& j, char const* key) {
 static std::string fpStr(matjson::Value const& j, char const* key) {
     return j.contains(key) ? j[key].asString().unwrapOr("") : "";
 }
+// Pack assets come from the active texture pack only: either named in flameperfect.json,
+// or dropped in a folder (music/, ambience/, intro/). If the pack doesn't have it, nothing plays.
+static std::string fpPackAsset(matjson::Value const& j, char const* key, std::initializer_list<char const*> files) {
+    if (key) {
+        auto named = fpStr(j, key);
+        if (!named.empty()) { auto full = fpFullPath(named); if (!full.empty()) return full; }
+    }
+    for (auto f : files) { auto full = fpFullPath(f); if (!full.empty()) return full; }
+    return "";
+}
+static std::string fpMenuMusic(matjson::Value const& j) {
+    return fpPackAsset(j, "menu-music", { "music/menu.mp3", "music/menu.ogg", "music/menu.wav" });
+}
 static std::optional<ccColor3B> fpColor(matjson::Value const& v) {
     if (!v.isArray() || v.size() < 3) return std::nullopt;
     auto c = [&](size_t i) { return (GLubyte)std::clamp<int64_t>(v[i].asInt().unwrapOr(255), 0, 255); };
@@ -133,9 +150,12 @@ static void fpAmbStart(matjson::Value const& j) {
     fpAmbStop();
     auto fm = FMODAudioEngine::get();
     if (!fm || !fm->m_system || fm->m_sfxVolume <= 0.f) return;
-    char const* keys[2] = { "loading-sound-day", "loading-sound-night" };
+    std::string paths[2] = {
+        fpPackAsset(j, "loading-sound-day", { "ambience/day.ogg", "ambience/day.mp3" }),
+        fpPackAsset(j, "loading-sound-night", { "ambience/night.ogg", "ambience/night.mp3" }),
+    };
     for (int i = 0; i < 2; i++) {
-        auto path = fpFullPath(fpStr(j, keys[i]));
+        auto& path = paths[i];
         if (path.empty()) continue;
         if (fm->m_system->createSound(path.c_str(), FMOD_LOOP_NORMAL | FMOD_2D, nullptr, &s_ambSnd[i]) != FMOD_OK) { s_ambSnd[i] = nullptr; continue; }
         if (fm->m_system->playSound(s_ambSnd[i], nullptr, true, &s_ambCh[i]) != FMOD_OK) { s_ambCh[i] = nullptr; continue; }
@@ -420,6 +440,12 @@ static std::string s_loadingMsg;
 class $modify(FPLoadingLayer, LoadingLayer) {
     bool init(bool refresh) {
         if (!LoadingLayer::init(refresh)) return false;
+        // the pack's own menu music (music/menu.mp3) starts on the start-up screen
+        if (auto pjm = fpPack()) {
+            auto music = fpMenuMusic(*pjm);
+            auto fm = FMODAudioEngine::get();
+            if (!music.empty() && fm && !fm->isMusicPlaying(music, 0)) fm->playMusic(music, true, 1.5f, 0);
+        }
         s_squareTex.clear();
         fpRefreshBrown();
         fpCleanLogo(this);
@@ -492,6 +518,21 @@ class $modify(FPLoadingLayer, LoadingLayer) {
 
 // ---------------------------------------------------------------------------
 // Main menu: own icons, background, mod reminder, social links
+#include <Geode/modify/GameManager.hpp>
+class $modify(FPGameManager, GameManager) {
+    void fadeInMenuMusic() {
+        if (auto pj = fpPack()) {
+            auto music = fpMenuMusic(*pj);
+            if (!music.empty()) {
+                auto fm = FMODAudioEngine::get();
+                if (fm && !fm->isMusicPlaying(music, 0)) fm->playMusic(music, true, 1.0f, 0);
+                return;
+            }
+        }
+        GameManager::fadeInMenuMusic();
+    }
+};
+
 #include <Geode/modify/MenuGameLayer.hpp>
 #include <Geode/modify/MenuLayer.hpp>
 
@@ -795,7 +836,7 @@ class $modify(FPMenuLayer, MenuLayer) {
         fpCheckForUpdate();
 
         // loading ambience: night sound carries over into the menu, then fades out
-        if (!fpStr(j, "loading-sound-night").empty()) {
+        if (!fpPackAsset(j, "loading-sound-night", { "ambience/night.ogg", "ambience/night.mp3" }).empty()) {
             this->addChild(FPAmbKeeper::create());
         }
 
@@ -803,9 +844,9 @@ class $modify(FPMenuLayer, MenuLayer) {
         static bool s_introPlayed = false;
         if (!s_introPlayed) {
             s_introPlayed = true;
-            auto intro = fpFullPath(fpStr(j, "startup-intro"));
+            auto intro = fpPackAsset(j, "startup-intro", { "intro/intro.webp" });
             if (!intro.empty() && Mod::get()->getSettingValue<bool>("play-intro")) {
-                if (auto layer = FPIntro::create(intro, fpFullPath(fpStr(j, "startup-sound")))) {
+                if (auto layer = FPIntro::create(intro, fpPackAsset(j, "startup-sound", { "intro/intro.mp3", "intro/intro.ogg", "intro/intro.wav" }))) {
                     this->addChild(layer, 1000);
                     s_introRunning = true;
                 }

@@ -1,3 +1,7 @@
+# v1.3.1
+- Packs can have their own menu music (music/menu.mp3): it starts on the start-up screen and carries on through every menu.
+- Packs can just drop files in folders instead of naming them: music/, ambience/ (day + night), intro/.
+
 # v1.3.0
 - Loading sounds now only play during loading and on the main menu (they stop when you leave it and come back when you return), and are quieter.
 
