@@ -1,3 +1,7 @@
+# v1.0.7
+- Animated loading screens (`loading-shader`).
+- Custom icons beside LEVEL COMPLETE on the end screen (`end-screen-icons`).
+
 # v1.0.6
 - The "get the mod" banner can now hang off the More Games button, so it only shows on the main menu (not the loading screen). The mod hides it.
 

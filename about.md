@@ -11,9 +11,10 @@ Each pack picks which of these it uses:
 - **Your own icons on the title screen.** The icons running across the main menu use *your* equipped icons and colours.
 - **Custom menu backgrounds.** The pack's background (still or animated) shows on the main menu and the other menus.
 - **No ground strip.** GD's ground is hidden on the menus so the background fills the whole screen.
-- **Custom loading screen.** A background picture or colour, plus the pack's own loading messages.
+- **Custom loading screen.** An animated scene, a background picture or a colour, plus the pack's own loading messages.
 - **Social buttons.** The menu buttons open the pack maker's links, and the logo button opens their profile.
 - **LEVEL COMPLETE fly-in.** The text flies into the end-screen popup.
+- **Icons on the end screen.** Up to two custom icons pop in beside LEVEL COMPLETE and bob gently.
 - **Themed chest glow.** Chest openings glow in the pack's colour instead of blue.
 - **Colour fixes for other mods.** Things other mods colour themselves (like the Integrated Demonlist search bar) are recoloured to match the pack.
 - **Removes the mod reminder.** Flameperfect packs show a "Get the Flameperfect mod" banner in the top-right corner when the mod is missing. Installing the mod hides it.
@@ -32,4 +33,4 @@ Get packs or order your own custom pack: [ko-fi.com/flameperfect](https://ko-fi.
 
 ## For pack makers
 
-Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `level-complete-flyin`, `chest-glow`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.
+Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.

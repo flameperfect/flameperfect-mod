@@ -11,10 +11,12 @@
 //    "menu-hide-ground":     true            hide the ground on the main menu (and on other menus with "all-menus")
 //    "all-menus":            true            also draw that background on the other menus
 //    "loading-background":   "file.png"      image behind the loading screen   (also: loading-bg.png)
+//    "loading-shader":       "file.glsl"     animated loading screen (same format as menu-shader)
 //    "loading-color":        [r,g,b]         loading screen colour (when no image)
 //    "loading-messages":     ["...", ...]    custom loading screen messages
 //    "level-complete-flyin": true            LEVEL COMPLETE! flies into the end-screen popup
 //    "chest-glow":           [r,g,b]         recolour the chest-opening glow + particles
+//    "end-screen-icons":     ["a.png","b.png"]  up to 2 icons beside LEVEL COMPLETE (1 = used on both sides)
 //    "node-colors":          {"node-id":[r,g,b]}   recolour things other mods colour in code
 //    "links":                {"facebook"|"twitter"|"youtube"|"twitch"|"discord"|"robtop": url}
 //  Mod reminder: a pack can ship "fp_daily_clean.png"; its Daily button carries an
@@ -212,6 +214,20 @@ class $modify(FPLoadingLayer, LoadingLayer) {
             auto c = spr->getColor();
             if (c.r == 0 && c.g == 102 && c.b == 255) { oldBg = spr; break; }
         }
+        int minZ = 0;
+        for (auto child : CCArrayExt<CCNode*>(this->getChildren())) minZ = std::min(minZ, child->getZOrder());
+
+        // animated loading screen: same kind of shader as the menu background
+        std::string shader = pj ? fpStr(j, "loading-shader") : "";
+        if (!shader.empty()) {
+            if (auto bg = FPBackground::create(shader)) {
+                bg->setID("loading-shader"_spr);
+                if (oldBg) oldBg->setVisible(false);
+                this->addChild(bg, minZ - 1);
+                return true;
+            }
+        }
+
         std::string image = pj ? fpStr(j, "loading-background") : "";
         if (image.empty() && !fpFullPath("loading-bg.png").empty()) image = "loading-bg.png";
         if (!image.empty() && !fpFullPath(image).empty()) {
@@ -496,9 +512,51 @@ public:
     }
 };
 
+// custom icons either side of the LEVEL COMPLETE title (pack key "end-screen-icons")
+static void fpAddEndIcons(CCNode* root) {
+    auto pj = fpPack();
+    if (!pj || !pj->contains("end-screen-icons")) return;
+    auto list = (*pj)["end-screen-icons"];
+    if (!list.isArray() || list.size() == 0) return;
+    auto title = fpFindComplete(root);
+    if (!title || !title->getParent()) return;
+    auto parent = title->getParent();
+    if (parent->getChildByID("end-icon-left"_spr)) return;
+
+    auto titleSize = title->getScaledContentSize();
+    for (int i = 0; i < 2; i++) {
+        auto file = list[std::min<size_t>(i, list.size() - 1)].asString().unwrapOr("");
+        if (file.empty() || fpFullPath(file).empty()) continue;
+        auto icon = CCSprite::create(file.c_str());
+        if (!icon) continue;
+        float target = titleSize.height * 1.25f;
+        float scale = target / std::max(1.f, icon->getContentSize().height);
+        float side = i == 0 ? -1.f : 1.f;
+        icon->setPosition(title->getPosition() + ccp(side * (titleSize.width / 2 + target / 2 + 10.f), 0));
+        icon->setID(i == 0 ? "end-icon-left"_spr : "end-icon-right"_spr);
+        icon->setScale(0.f);
+        parent->addChild(icon, title->getZOrder());
+        // pop in, then bob gently (the two icons out of step)
+        icon->runAction(CCSequence::create(
+            CCDelayTime::create(0.15f + 0.1f * i),
+            CCEaseBackOut::create(CCScaleTo::create(0.35f, scale)),
+            nullptr
+        ));
+        auto bob = CCSequence::create(
+            CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, 4.f))),
+            CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, -4.f))),
+            nullptr
+        );
+        if (i == 1) bob = CCSequence::create(CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, -4.f))),
+                                             CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, 4.f))), nullptr);
+        icon->runAction(CCRepeatForever::create(bob));
+    }
+}
+
 class $modify(FPEndLevelLayer, EndLevelLayer) {
     void showLayer(bool instant) {
         EndLevelLayer::showLayer(instant);
+        fpAddEndIcons(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
         if (!s_completeText || !s_completeText->getParent()) return;
         auto title = fpFindComplete(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
         if (!title) return;
