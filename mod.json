@@ -5,7 +5,7 @@
     },
     "id": "flameperfect.flameperfect",
     "name": "The Flame Engine",
-    "version": "v1.1.4",
+    "version": "v1.2.0",
     "developer": "Flameperfect",
     "description": "Brings my Flameperfect texture packs to life: startup intros, animated menus and loading screens, themed lists and popups.",
     "early-load": true,
@@ -22,6 +22,12 @@
             "default": true,
             "name": "Play pack intros",
             "description": "Plays the pack's intro animation when GD opens. You can also click to skip it."
+        },
+        "check-updates": {
+            "type": "bool",
+            "default": true,
+            "name": "Check for updates",
+            "description": "When GD opens, check if there's a newer version of The Flame Engine and offer to update it."
         }
     },
     "links": {

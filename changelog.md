@@ -1,3 +1,6 @@
+# v1.2.0
+- Updates itself: when GD opens it checks for a newer version and asks if you want it. You can turn this off in the mod settings.
+
 # v1.1.4
 - First public release on the Geode index.
 - Startup intros with sound, animated menu and loading screen backgrounds.

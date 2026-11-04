@@ -416,6 +416,83 @@ static bool fpOpenLink(char const* key) {
 }
 
 // ---------------------------------------------------------------------------
+// Updates: The Flame Engine isn't on the Geode index, so it checks GitHub itself.
+// Once per launch (only with a Flameperfect pack applied) it looks at the latest
+// release; if it's newer it asks, downloads the .geode into geode/mods, and the new
+// version loads next time GD starts. "Later" skips that version.
+static bool s_introRunning = false;
+static std::optional<std::pair<std::string, std::string>> s_pendingUpdate;   // tag, download url
+static std::optional<arc::TaskHandle<void>> s_updateTask;
+
+static void fpDownloadUpdate(std::string tag, std::string url) {
+    auto target = dirs::getModsDir() / "flameperfect.flameperfect.geode";
+    s_updateTask = async::spawn(
+        web::WebRequest().userAgent("flame-engine-updater").followRedirects(true).get(url),
+        [tag, target](web::WebResponse res) {
+            std::error_code ec;
+            auto tmp = target;
+            tmp += ".download";
+            if (!res.ok() || !res.into(tmp)) {
+                FLAlertLayer::create("The Flame Engine", "Couldn't download the update. Try again next time you open GD.", "OK")->show();
+                return;
+            }
+            std::filesystem::rename(tmp, target, ec);
+            if (ec) {
+                std::filesystem::remove(tmp, ec);
+                FLAlertLayer::create("The Flame Engine", "Couldn't install the update. Try again next time you open GD.", "OK")->show();
+                return;
+            }
+            FLAlertLayer::create("The Flame Engine", fmt::format("Updated to <cy>{}</c>! Restart GD to finish.", tag), "OK")->show();
+        }
+    );
+}
+
+static void fpShowPendingUpdate() {
+    if (!s_pendingUpdate || s_introRunning) return;
+    auto [tag, url] = *s_pendingUpdate;
+    s_pendingUpdate.reset();
+    createQuickPopup("The Flame Engine",
+        fmt::format("A new version (<cy>{}</c>) is out.\nUpdate now?", tag),
+        "Later", "Update",
+        [tag, url](FLAlertLayer*, bool update) {
+            if (update) fpDownloadUpdate(tag, url);
+            else Mod::get()->setSavedValue<std::string>("skipped-version", tag);
+        });
+}
+
+static void fpCheckForUpdate() {
+    static bool s_checked = false;
+    if (s_checked || !Mod::get()->getSettingValue<bool>("check-updates")) return;
+    s_checked = true;
+    s_updateTask = async::spawn(
+        web::WebRequest()
+            .userAgent("flame-engine-updater")
+            .header("Accept", "application/vnd.github+json")
+            .get("https://api.github.com/repos/flameperfect/flameperfect-mod/releases/latest"),
+        [](web::WebResponse res) {
+            if (!res.ok()) return;
+            auto json = res.json();
+            if (!json) return;
+            auto tag = (*json)["tag_name"].asString().unwrapOr("");
+            if (tag.empty() || tag == Mod::get()->getSavedValue<std::string>("skipped-version")) return;
+            auto latest = VersionInfo::parse(tag.starts_with("v") ? tag.substr(1) : tag);
+            if (!latest || !(Mod::get()->getVersion() < latest.unwrap())) return;
+            std::string url;
+            if ((*json)["assets"].isArray()) {
+                for (auto& a : (*json)["assets"]) {
+                    if (a["name"].asString().unwrapOr("") == "flameperfect.flameperfect.geode") {
+                        url = a["browser_download_url"].asString().unwrapOr("");
+                    }
+                }
+            }
+            if (url.empty()) return;
+            s_pendingUpdate = std::make_pair(tag, url);
+            fpShowPendingUpdate();
+        }
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Startup intro: plays the pack's animated .webp (+ optional sound) once, over the
 // main menu, the first time it opens. Click to skip. Menu music waits until it ends.
 class FPIntro : public CCLayer {
@@ -555,6 +632,8 @@ public:
         this->resumeMusic();
         m_spr->runAction(CCFadeOut::create(0.35f));
         m_black->runAction(CCFadeOut::create(0.35f));
+        s_introRunning = false;
+        fpShowPendingUpdate();
         this->runAction(CCSequence::create(
             CCDelayTime::create(0.4f),
             CCRemoveSelf::create(),
@@ -571,6 +650,9 @@ class $modify(FPMenuLayer, MenuLayer) {
         if (!pj) return true;
         auto j = *pj;
 
+        // check GitHub for a newer version (once per launch)
+        fpCheckForUpdate();
+
         // startup intro, once per launch
         static bool s_introPlayed = false;
         if (!s_introPlayed) {
@@ -579,6 +661,7 @@ class $modify(FPMenuLayer, MenuLayer) {
             if (!intro.empty() && Mod::get()->getSettingValue<bool>("play-intro")) {
                 if (auto layer = FPIntro::create(intro, fpFullPath(fpStr(j, "startup-sound")))) {
                     this->addChild(layer, 1000);
+                    s_introRunning = true;
                 }
             }
         }

@@ -26,7 +26,7 @@ If you're not using one of my packs, it just sits there and does nothing, so it'
 - Fixes colours other mods set in code (like the Integrated Demonlist search bar).
 
 **The reminder note**
-- My packs show a small "Get The Flame Engine on Geode" note in the top-right if you don't have the mod. Install it and the note goes away.
+- My packs show a small "Install The Flame Engine" note in the top-right if you don't have the mod. Install it and the note goes away.
 
 ## How to use it
 
@@ -39,6 +39,7 @@ If you have **Menu Shaders**, **LoadingScreenTweaks**, **Custom Startups**, **Fl
 ## Settings
 
 - **Play pack intros** - turn the startup intro on or off.
+- **Check for updates** - when GD opens it checks for a newer version and asks before updating.
 
 ## Packs
 
