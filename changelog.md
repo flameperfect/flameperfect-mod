@@ -1,3 +1,6 @@
+# v1.1.2
+- Menu transitions: packs can send a wave of bubbles (or their own picture) up the screen when you change menus, and fade through their own colour instead of black (`menu-transition`, `menu-transition-color`).
+
 # v1.1.1
 - New name: The Flame Engine.
 

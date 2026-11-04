@@ -31,6 +31,8 @@
 //                             "comment-cell-odd"|"comment-cell-even"|"comment-cell-box-odd"|"comment-cell-box-even"|
 //                             "comment-cell-small-odd"|"comment-cell-small-even": [r,g,b]}   GD's brown lists
 //    "background-color":     [r,g,b]         GD's blue menu background tint
+//    "menu-transition":      "bubble.png"    a wave of these sweeps up the screen when changing menus
+//    "menu-transition-color": [r,g,b]        colour the menu fade goes through (instead of black)
 //    "links":                {"facebook"|"twitter"|"youtube"|"twitch"|"discord"|"robtop": url}
 //  Mod reminder: a pack can ship "fp_daily_clean.png"; its Daily button carries an
 //  "install the Flameperfect mod" note, which this mod swaps for the clean image.
@@ -725,6 +727,9 @@ class $modify(FPLayer, CCLayer) {
         auto j = *pj;
 
         fpApplyNodeColors(this);
+        if (typeinfo_cast<CCScene*>(this->getParent()) && fpBool(j, "debug-layout")) {
+            fpDumpTree(this, std::string(getObjectName(this)).c_str());
+        }
 
         // GD's blue menu background tint (when the pack shader isn't drawn there)
         if (auto col = fpColorKey(j, "background-color")) {
@@ -1021,6 +1026,61 @@ static void fpEndBubbles(CCNode* root) {
         ));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Menu transitions ("menu-transition": "bubble.png", "menu-transition-color": [r,g,b]):
+// GD's fade between menus goes through the pack's colour while a wave of bubbles
+// sweeps up the screen, covering the swap at the halfway point.
+#include <Geode/modify/CCTransitionFade.hpp>
+
+class $modify(FPTransitionFade, CCTransitionFade) {
+    void onEnter() {
+        auto pj = fpPack();
+        if (pj) {
+            if (auto col = fpColorKey(*pj, "menu-transition-color")) {
+                m_tColor = ccc4(col->r, col->g, col->b, 255);
+            }
+        }
+        CCTransitionFade::onEnter();
+        if (!pj) return;
+        auto file = fpStr(*pj, "menu-transition");
+        if (file.empty() || fpFullPath(file).empty()) return;
+
+        auto holder = CCNode::create();
+        holder->setID("transition-bubbles"_spr);
+        this->addChild(holder, 1000);
+        auto win = CCDirector::get()->getWinSize();
+        float d = std::max(0.2f, m_fDuration);
+        auto rnd = []() { return (float)rand() / RAND_MAX; };
+        for (int i = 0; i < 60; i++) {
+            auto b = CCSprite::create(file.c_str());
+            if (!b) return;
+            float size = std::max(1.f, b->getContentSize().width);
+            float scale = (14.f + 46.f * rnd() * rnd()) / size * (win.height / 320.f);
+            float x = win.width * (-0.05f + 1.1f * rnd());
+            // bubbles bunch up around the middle of the fade, so the swap happens behind them
+            float start = d * (0.05f + 0.35f * rnd());
+            float time = d * (0.55f + 0.35f * rnd());
+            float half = size * scale / 2;
+            b->setScale(scale);
+            b->setPosition(ccp(x, -half));
+            b->setOpacity(0);
+            holder->addChild(b);
+            float wob = (rnd() < 0.5f ? 1.f : -1.f) * (4.f + 10.f * rnd());
+            b->runAction(CCSequence::create(
+                CCDelayTime::create(start),
+                CCSpawn::create(
+                    CCFadeTo::create(time * 0.15f, 235),
+                    CCEaseSineIn::create(CCMoveBy::create(time, ccp(wob, win.height + 2 * half))),
+                    CCSequence::create(CCDelayTime::create(time * 0.75f), CCFadeOut::create(time * 0.25f), nullptr),
+                    nullptr
+                ),
+                CCRemoveSelf::create(),
+                nullptr
+            ));
+        }
+    }
+};
 
 // tint a popup's dark panel (keeps its see-through opacity)
 static void fpTint(CCNode* root, char const* id, char const* key) {

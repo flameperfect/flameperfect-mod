@@ -15,6 +15,7 @@ It only does anything while a Flameperfect pack is applied with **Texture Loader
 **Menus**
 - **Animated menu backgrounds.** The pack's background (still or animated) fills the main menu and the other menus, including other mods' menus like BetterInfo. The ground strip is hidden so it reaches the bottom.
 - **Your own icons on the title screen.** The icons running across the main menu use *your* equipped icons and colours.
+- **Menu transitions.** Changing menus fades through the pack's colour, with a wave of the pack's bubbles (or other effect) sweeping up the screen.
 - **Social buttons.** The menu buttons open the pack maker's links, and the logo button opens their profile.
 
 **Lists, profiles and popups**
@@ -45,4 +46,4 @@ Get packs or order your own custom pack: [ko-fi.com/flameperfect](https://ko-fi.
 
 ## For pack makers
 
-Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `background-color`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `startup-intro`, `startup-sound`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `ui-brown-to`, `list-colors`, `node-colors`, `links`, `debug-layout`. Each one is explained at the top of `src/main.cpp`.
+Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `background-color`, `menu-transition`, `menu-transition-color`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `startup-intro`, `startup-sound`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `ui-brown-to`, `list-colors`, `node-colors`, `links`, `debug-layout`. Each one is explained at the top of `src/main.cpp`.
