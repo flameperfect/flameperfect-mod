@@ -1,5 +1,5 @@
 // =============================================================================
-//  Flameperfect  -  the mod that powers Flameperfect texture packs
+//  The Flame Engine  -  the mod behind my Flameperfect texture packs
 //
 //  Everything is switched on PER PACK by a file inside the applied texture pack:
 //      flameperfect.json
@@ -24,7 +24,7 @@
 //    "pause-hide-background": true           no dark panel behind the pause menu
 //    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
-//    "debug-layout":         true            log the end-screen / pause-menu layout (for pack makers)
+//    "debug-layout":         true            log menu layouts + where brown tints come from (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
 //    "node-colors":          {"node-id":[r,g,b]}   recolour nodes by node ID (search boxes, profile boxes, other mods)
 //    "list-colors":          {"list-bg"|"list-cell-odd"|"list-cell-even"|"list-cell-selected"|"comment-list-bg"|
@@ -33,8 +33,9 @@
 //    "background-color":     [r,g,b]         GD's blue menu background tint
 //    "hide-nodes":           ["Layer/node-id", ...]   hide parts of a menu, e.g. "SecretRewardsLayer/floor"
 //    "links":                {"facebook"|"twitter"|"youtube"|"twitch"|"discord"|"robtop": url}
-//  Mod reminder: a pack can ship "fp_daily_clean.png"; its Daily button carries an
-//  "install the Flameperfect mod" note, which this mod swaps for the clean image.
+//  Reminder note: a pack can draw a "Get The Flame Engine on Geode" note off its More Games
+//  button, Daily button or logo, and ship fp_moregames_clean / fp_daily_clean / fp_logo_clean
+//  pictures. With the mod installed, those clean pictures are swapped in so the note disappears.
 // =============================================================================
 #include <Geode/Geode.hpp>
 #include <algorithm>

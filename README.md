@@ -1,5 +1,9 @@
-# The Flame Engine (Geode mod)
+# The Flame Engine
 
-Powers Flameperfect Geometry Dash texture packs. See `about.md` for what it does.
+Geode mod for my Flameperfect Geometry Dash texture packs. Everything it does is in [about.md](about.md).
 
-GitHub Actions builds the mod on every push to `main`. When the `version` in `mod.json` is new, it also publishes a GitHub release with the `.geode` attached. Existing releases are never replaced.
+## Building
+
+GitHub Actions builds it every time I push to `main`. If the `version` in `mod.json` is new, it also makes a release with the `.geode` file attached (old releases are left alone).
+
+Packs: [ko-fi.com/flameperfect](https://ko-fi.com/flameperfect)
