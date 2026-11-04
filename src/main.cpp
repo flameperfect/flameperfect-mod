@@ -26,6 +26,7 @@
 //    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
 //    "loading-sound-day" / "loading-sound-night": "a.ogg"   looping sounds that crossfade with loading progress
 //                            (or just put ambience/day.ogg + ambience/night.ogg in the pack)
+//    "reward-glow-color":    [r,g,b]         colour of the glow behind a chest you open (GD's is blue)
 //    "menu-music":           "song.mp3"      the pack's own menu music, from the start-up screen through every menu
 //                            (or just put music/menu.mp3 in the pack)
 //    "startup-intro" / "startup-sound": or just put intro/intro.webp + intro/intro.mp3 in the pack
@@ -518,6 +519,42 @@ class $modify(FPLoadingLayer, LoadingLayer) {
 
 // ---------------------------------------------------------------------------
 // Main menu: own icons, background, mod reminder, social links
+// "reward-glow-color": [r,g,b]  the blue glow behind a chest you open (GD tints it blue in code)
+#include <Geode/modify/RewardUnlockLayer.hpp>
+static bool fpIsBlueTint(ccColor3B c) {
+    return c.b >= 120 && c.b > c.r + 50 && c.b > c.g + 20;
+}
+static void fpTintRewardGlow(CCNode* node, ccColor3B to, int depth = 0) {
+    if (!node || depth > 6) return;
+    if (auto rgba = typeinfo_cast<CCRGBAProtocol*>(node)) {
+        auto c = rgba->getColor();
+        if (fpIsBlueTint(c)) {
+            float k = c.b / 255.f;
+            float top = std::max({ to.r, to.g, to.b }) / 255.f;
+            auto ch = [&](GLubyte v) { return (GLubyte)std::clamp((int)(v / top * k + 0.5f), 0, 255); };
+            rgba->setColor({ ch(to.r), ch(to.g), ch(to.b) });
+        }
+    }
+    for (auto child : CCArrayExt<CCNode*>(node->getChildren())) fpTintRewardGlow(child, to, depth + 1);
+}
+static void fpRewardGlow(RewardUnlockLayer* l) {
+    auto pj = fpPack(); if (!pj) return;
+    auto to = fpColorKey(*pj, "reward-glow-color"); if (!to) return;
+    fpTintRewardGlow(l, *to);
+    if (l->m_backgroundObjects)
+        for (auto obj : CCArrayExt<CCNode*>(l->m_backgroundObjects)) fpTintRewardGlow(obj, *to);
+}
+class $modify(FPRewardUnlockLayer, RewardUnlockLayer) {
+    bool init(int type, RewardsPage* page) {
+        if (!RewardUnlockLayer::init(type, page)) return false;
+        fpRewardGlow(this);
+        // GD fades/tints parts in while the chest opens: keep catching them for a few seconds
+        this->schedule(schedule_selector(FPRewardUnlockLayer::fpGlowTick), 0.05f, 120, 0.f);
+        return true;
+    }
+    void fpGlowTick(float) { fpRewardGlow(this); }
+};
+
 #include <Geode/modify/GameManager.hpp>
 class $modify(FPGameManager, GameManager) {
     void fadeInMenuMusic() {
