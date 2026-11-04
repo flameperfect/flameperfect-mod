@@ -1,3 +1,6 @@
+# v1.2.5
+- Packs can recolour things GD tints in code, like the level progress bars ("tint-swaps").
+
 # v1.2.4
 - Loading progress changes smoothly instead of in jumps.
 

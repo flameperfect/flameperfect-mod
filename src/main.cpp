@@ -24,6 +24,7 @@
 //    "pause-color":          [r,g,b]         tint of the pause-menu panel
 //    "pause-hide-background": true           no dark panel behind the pause menu
 //    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
+//    "tint-swaps":           [{"texture":"GJ_progressBar_001","from":[0,255,0],"to":[r,g,b]}]  swap a colour GD tints a picture with
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log menu layouts + where brown tints come from (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
@@ -223,9 +224,26 @@ static std::optional<ccColor3B> s_brownTo;
 static bool s_debugLayout = false;
 static std::unordered_map<CCTexture2D*, bool> s_squareTex;
 
+// "tint-swaps": [{"texture": "GJ_progressBar_001", "from": [0,255,0], "to": [r,g,b]}]
+// GD colours some white pictures in code (like the level progress bars); this swaps that colour.
+struct FPTintSwap { std::string texture; ccColor3B from; ccColor3B to; };
+static std::vector<FPTintSwap> s_tintSwaps;
+static std::unordered_map<CCTexture2D*, std::string> s_texNames;
+
 static void fpRefreshBrown() {
     auto pj = fpPack();
     s_brownTo = pj ? fpColorKey(*pj, "ui-brown-to") : std::nullopt;
+    s_tintSwaps.clear();
+    s_texNames.clear();
+    if (pj && pj->contains("tint-swaps") && (*pj)["tint-swaps"].isArray()) {
+        for (auto& item : (*pj)["tint-swaps"]) {
+            auto from = fpColorKey(item, "from");
+            auto to = fpColorKey(item, "to");
+            if (!from || !to) continue;
+            std::string tex = item.contains("texture") ? item["texture"].asString().unwrapOr("") : "";
+            s_tintSwaps.push_back({ tex, *from, *to });
+        }
+    }
     s_debugLayout = pj && fpBool(*pj, "debug-layout");
 }
 static bool fpIsBrown(ccColor3B c) {
@@ -244,8 +262,23 @@ static bool fpIsSquareTexture(CCTexture2D* tex) {
     return square;
 }
 
+static bool fpTextureMatches(CCTexture2D* tex, std::string const& want) {
+    if (want.empty()) return true;
+    if (!tex) return false;
+    auto it = s_texNames.find(tex);
+    if (it == s_texNames.end()) it = s_texNames.emplace(tex, fpTextureName(tex)).first;
+    return it->second.find(want) != std::string::npos;
+}
+
 class $modify(FPSprite, CCSprite) {
     void setColor(ccColor3B const& color) {
+        for (auto& sw : s_tintSwaps) {
+            if (color.r == sw.from.r && color.g == sw.from.g && color.b == sw.from.b
+                && fpTextureMatches(this->getTexture(), sw.texture)) {
+                CCSprite::setColor(sw.to);
+                return;
+            }
+        }
         if (s_debugLayout && fpIsBrown(color)) {
             // pack-maker debugging: report where brown tints come from (once each)
             static std::set<std::string> seen;
