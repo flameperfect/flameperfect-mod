@@ -1,3 +1,6 @@
+# v1.0.8
+- Fixed end-screen icons not appearing.
+
 # v1.0.7
 - Animated loading screens (`loading-shader`).
 - Custom icons beside LEVEL COMPLETE on the end screen (`end-screen-icons`).

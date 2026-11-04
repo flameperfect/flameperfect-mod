@@ -24,6 +24,7 @@
 // =============================================================================
 #include <Geode/Geode.hpp>
 #include <algorithm>
+#include <functional>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/web.hpp>
 
@@ -432,7 +433,7 @@ class $modify(FPLayer, CCLayer) {
 #include <Geode/modify/EndLevelLayer.hpp>
 
 static CCSprite* fpFindComplete(CCNode* node, int depth = 0) {
-    if (!node || depth > 4) return nullptr;
+    if (!node || depth > 7) return nullptr;
     for (auto child : CCArrayExt<CCNode*>(node->getChildren())) {
         if (auto spr = typeinfo_cast<CCSprite*>(child)) {
             if (cocos::isSpriteFrameName(spr, "GJ_levelComplete_001.png")) return spr;
@@ -518,8 +519,28 @@ static void fpAddEndIcons(CCNode* root) {
     if (!pj || !pj->contains("end-screen-icons")) return;
     auto list = (*pj)["end-screen-icons"];
     if (!list.isArray() || list.size() == 0) return;
-    auto title = fpFindComplete(root);
-    if (!title || !title->getParent()) return;
+    CCSprite* title = fpFindComplete(root);
+    if (!title) title = typeinfo_cast<CCSprite*>(root->getChildByIDRecursive("level-complete-text"));
+    if (!title) title = typeinfo_cast<CCSprite*>(root->getChildByIDRecursive("complete-message"));
+    if (!title || !title->getParent()) {
+        static bool logged = false;
+        if (!logged) {
+            logged = true;
+            log::warn("Flameperfect: end-screen-icons: LEVEL COMPLETE title not found. Children:");
+            std::function<void(CCNode*, int)> dump = [&](CCNode* n, int d) {
+                for (auto c : CCArrayExt<CCNode*>(n->getChildren())) {
+                    auto spr = typeinfo_cast<CCSprite*>(c);
+                    log::warn("{}{} id='{}' pos=({:.0f},{:.0f}) size=({:.0f},{:.0f}){}", std::string(d * 2, ' '),
+                        getObjectName(c), c->getID(), c->getPositionX(), c->getPositionY(),
+                        c->getScaledContentSize().width, c->getScaledContentSize().height,
+                        spr ? " [sprite]" : "");
+                    if (d < 3) dump(c, d + 1);
+                }
+            };
+            dump(root, 0);
+        }
+        return;
+    }
     auto parent = title->getParent();
     if (parent->getChildByID("end-icon-left"_spr)) return;
 
@@ -554,6 +575,14 @@ static void fpAddEndIcons(CCNode* root) {
 }
 
 class $modify(FPEndLevelLayer, EndLevelLayer) {
+    void customSetup() {
+        EndLevelLayer::customSetup();
+        // the popup is fully built after customSetup; add the icons on the next frame
+        Ref<EndLevelLayer> self = this;
+        Loader::get()->queueInMainThread([self]() {
+            fpAddEndIcons(self->m_mainLayer ? (CCNode*)self->m_mainLayer : (CCNode*)self.data());
+        });
+    }
     void showLayer(bool instant) {
         EndLevelLayer::showLayer(instant);
         fpAddEndIcons(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
