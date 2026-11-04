@@ -1,5 +1,9 @@
+# v1.1.3
+- Packs can hide parts of a menu (`hide-nodes`), e.g. the treasure room floor so the pack background shows.
+- Removed menu transitions (most players use Fast Menu Transitions anyway).
+
 # v1.1.2
-- Menu transitions: packs can send a wave of bubbles (or their own picture) up the screen when you change menus, and fade through their own colour instead of black (`menu-transition`, `menu-transition-color`).
+- (Menu transitions test - removed again in v1.1.3.)
 
 # v1.1.1
 - New name: The Flame Engine.
