@@ -1,3 +1,6 @@
+# v1.2.1
+- The update check gives up quickly if GitHub doesn't answer, so it never holds anything up.
+
 # v1.2.0
 - Updates itself: when GD opens it checks for a newer version and asks if you want it. You can turn this off in the mod settings.
 

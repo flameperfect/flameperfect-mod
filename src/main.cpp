@@ -427,7 +427,7 @@ static std::optional<arc::TaskHandle<void>> s_updateTask;
 static void fpDownloadUpdate(std::string tag, std::string url) {
     auto target = dirs::getModsDir() / "flameperfect.flameperfect.geode";
     s_updateTask = async::spawn(
-        web::WebRequest().userAgent("flame-engine-updater").followRedirects(true).get(url),
+        web::WebRequest().userAgent("flame-engine-updater").followRedirects(true).timeout(std::chrono::seconds(60)).get(url),
         [tag, target](web::WebResponse res) {
             std::error_code ec;
             auto tmp = target;
@@ -468,6 +468,7 @@ static void fpCheckForUpdate() {
         web::WebRequest()
             .userAgent("flame-engine-updater")
             .header("Accept", "application/vnd.github+json")
+            .timeout(std::chrono::seconds(10))
             .get("https://api.github.com/repos/flameperfect/flameperfect-mod/releases/latest"),
         [](web::WebResponse res) {
             if (!res.ok()) return;
