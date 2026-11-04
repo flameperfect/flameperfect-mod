@@ -190,6 +190,8 @@ static std::string fpTextureName(CCTexture2D* tex) {
     return "";
 }
 
+static void fpDumpTree(CCNode* root, char const* label);
+
 // ---------------------------------------------------------------------------
 // Mod reminder on the logo: packs draw a "get the mod" banner off the GEOMETRY DASH
 // logo (using the frame offset). With the mod installed, swap in the clean logo.
