@@ -199,7 +199,7 @@ static void fpDumpTree(CCNode* root, char const* label);
 
 // ---------------------------------------------------------------------------
 // GD's brown UI tints: list outlines, text-box fills and other rounded boxes are white
-// "square" pictures that GD tints brown in code, so a texture pack can't recolour them.
+// "square" / commentBorder pictures that GD tints brown in code, so a texture pack can't recolour them.
 // With "ui-brown-to": [r,g,b] those brown tints become that colour (darker browns
 // become a matching darker shade). Only touches the rounded-box pictures, never icons.
 #include <Geode/modify/CCSprite.hpp>
@@ -223,7 +223,8 @@ static bool fpIsSquareTexture(CCTexture2D* tex) {
     auto name = fpTextureName(tex);
     auto slash = name.find_last_of("/\\");
     if (slash != std::string::npos) name = name.substr(slash + 1);
-    bool square = name.rfind("square0", 0) == 0 || name.rfind("GJ_square", 0) == 0;
+    bool square = name.rfind("square0", 0) == 0 || name.rfind("GJ_square", 0) == 0
+        || name.rfind("commentBorder", 0) == 0;
     s_squareTex[tex] = square;
     return square;
 }

@@ -1,3 +1,6 @@
+# v1.0.16
+- `ui-brown-to` now also recolours the brown outlines around lists (profile, messages, friends, comments).
+
 # v1.0.15
 - Pack-maker debug option now also reports where GD's brown tints come from.
 
