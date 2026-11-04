@@ -181,9 +181,8 @@ static std::string fpTextureName(CCTexture2D* tex) {
     if (!tex) return "";
     auto dict = CCTextureCache::sharedTextureCache()->m_pTextures;
     if (!dict) return "";
-    CCDictElement* el = nullptr;
-    CCDICT_FOREACH(dict, el) {
-        if (el->getObject() == tex) return el->getStrKey();
+    for (auto [key, obj] : CCDictionaryExt<std::string, CCTexture2D*>(dict)) {
+        if (obj == tex) return key;
     }
     return "";
 }
