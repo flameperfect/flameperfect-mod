@@ -171,6 +171,28 @@ public:
 };
 
 // ---------------------------------------------------------------------------
+// Mod reminder on the logo: packs draw a "get the mod" banner off the GEOMETRY DASH
+// logo (using the frame offset). With the mod installed, swap in the clean logo.
+static CCSprite* fpFindSprite(CCNode* node, char const* frame, int depth = 0) {
+    if (!node || depth > 6) return nullptr;
+    for (auto child : CCArrayExt<CCNode*>(node->getChildren())) {
+        if (auto spr = typeinfo_cast<CCSprite*>(child)) {
+            if (cocos::isSpriteFrameName(spr, frame)) return spr;
+        }
+        if (auto found = fpFindSprite(child, frame, depth + 1)) return found;
+    }
+    return nullptr;
+}
+static void fpCleanLogo(CCNode* layer) {
+    if (fpFullPath("fp_logo_clean.png").empty()) return;
+    auto logo = fpFindSprite(layer, "GJ_logo_001.png");
+    if (!logo) return;
+    if (auto clean = CCSprite::create("fp_logo_clean.png")) {
+        logo->setDisplayFrame(clean->displayFrame());
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Loading screen
 #include <Geode/modify/LoadingLayer.hpp>
 
@@ -179,6 +201,7 @@ static std::string s_loadingMsg;
 class $modify(FPLoadingLayer, LoadingLayer) {
     bool init(bool refresh) {
         if (!LoadingLayer::init(refresh)) return false;
+        fpCleanLogo(this);
         auto pj = fpPack();
         matjson::Value j = pj ? *pj : matjson::Value();
 
@@ -294,7 +317,9 @@ class $modify(FPMenuLayer, MenuLayer) {
         if (!pj) return true;
         auto j = *pj;
 
-        // reminder: swap the Daily button's "get the mod" artwork for the clean one.
+        fpCleanLogo(this);
+
+        // older packs: swap the Daily button's "get the mod" artwork for the clean one.
         // setDisplayFrame also resets the frame offset the pack uses to draw the
         // reminder banner away from the chest (in the top-right corner).
         if (!fpFullPath("fp_daily_clean.png").empty()) {

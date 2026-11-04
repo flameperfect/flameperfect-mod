@@ -1,3 +1,6 @@
+# v1.0.5
+- The "get the mod" banner now hangs off the GEOMETRY DASH logo instead of the Daily button, so it no longer moves when you press Daily. The mod hides it on the main menu and the loading screen.
+
 # v1.0.4
 - Reads the pack's settings once and re-reads only when they change (faster menus).
 - Colours in pack settings are clamped to 0-255.
