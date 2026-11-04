@@ -14,6 +14,8 @@
 //    "loading-shader":       "file.glsl"     animated loading screen (same format as menu-shader)
 //    "loading-color":        [r,g,b]         loading screen colour (when no image)
 //    "loading-messages":     ["...", ...]    custom loading screen messages
+//    "startup-intro":        "intro.webp"    animated webp played once over the main menu at launch
+//    "startup-sound":        "intro.mp3"     sound played with it
 //    "level-complete-flyin": true            LEVEL COMPLETE! flies into the end-screen popup
 //    "chest-glow":           [r,g,b]         recolour the chest-opening glow + particles
 //    "end-screen-bubbles":   "bubble.png"    bubbles rise through the end screen when it opens
@@ -34,6 +36,7 @@
 #include <set>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/web.hpp>
+#include <webp/demux.h>
 
 using namespace geode::prelude;
 
@@ -347,12 +350,171 @@ static bool fpOpenLink(char const* key) {
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// Startup intro: plays the pack's animated .webp (+ optional sound) once, over the
+// main menu, the first time it opens. Click to skip. Menu music waits until it ends.
+class FPIntro : public CCLayer {
+public:
+    std::vector<uint8_t> m_data;
+    WebPAnimDecoder* m_dec = nullptr;
+    CCSprite* m_spr = nullptr;
+    CCLayerColor* m_black = nullptr;
+    int m_w = 0, m_h = 0;
+    int m_nextTs = 0;           // ms at which the frame on screen ends
+    float m_time = 0.f;
+    bool m_started = false, m_done = false, m_pausedMusic = false;
+    std::string m_soundPath;
+    FMOD::Sound* m_sound = nullptr;
+    FMOD::Channel* m_channel = nullptr;
+
+    static FPIntro* create(std::string const& webp, std::string const& sound) {
+        auto ret = new FPIntro();
+        if (ret->init(webp, sound)) { ret->autorelease(); return ret; }
+        delete ret;
+        return nullptr;
+    }
+    ~FPIntro() override {
+        if (m_dec) WebPAnimDecoderDelete(m_dec);
+        this->resumeMusic();
+        if (m_sound) {
+            bool playing = false;
+            if (!m_channel || m_channel->isPlaying(&playing) != FMOD_OK || !playing) m_sound->release();
+        }
+    }
+    bool init(std::string const& webp, std::string const& sound) {
+        if (!CCLayer::init()) return false;
+        auto bytes = utils::file::readBinary(std::filesystem::path(webp));
+        if (!bytes) return false;
+        m_data = bytes.unwrap();
+        WebPData wd{ m_data.data(), m_data.size() };
+        WebPAnimDecoderOptions opts;
+        if (!WebPAnimDecoderOptionsInit(&opts)) return false;
+        opts.color_mode = MODE_RGBA;
+        opts.use_threads = 1;
+        m_dec = WebPAnimDecoderNew(&wd, &opts);
+        if (!m_dec) return false;
+        WebPAnimInfo info;
+        if (!WebPAnimDecoderGetInfo(m_dec, &info) || info.frame_count == 0) return false;
+        m_w = (int)info.canvas_width;
+        m_h = (int)info.canvas_height;
+        uint8_t* buf = nullptr;
+        if (!WebPAnimDecoderGetNext(m_dec, &buf, &m_nextTs)) return false;
+
+        auto tex = new CCTexture2D();
+        if (!tex->initWithData(buf, kCCTexture2DPixelFormat_RGBA8888, m_w, m_h, CCSize((float)m_w, (float)m_h))) {
+            tex->release();
+            return false;
+        }
+        tex->autorelease();
+
+        auto win = CCDirector::get()->getWinSize();
+        m_black = CCLayerColor::create({ 0, 0, 0, 255 });
+        this->addChild(m_black);
+        m_spr = CCSprite::createWithTexture(tex);
+        auto sz = m_spr->getContentSize();
+        m_spr->setScale(std::max(win.width / sz.width, win.height / sz.height));
+        m_spr->setPosition(win / 2);
+        this->addChild(m_spr);
+        m_soundPath = sound;
+
+        this->setID("startup-intro"_spr);
+        this->setTouchEnabled(true);
+        this->setTouchMode(kCCTouchesOneByOne);
+        this->scheduleUpdate();
+        return true;
+    }
+    void registerWithTouchDispatcher() override {
+        CCTouchDispatcher::get()->addTargetedDelegate(this, -1000, true);
+    }
+    bool ccTouchBegan(CCTouch*, CCEvent*) override {
+        this->finish(true);
+        return true;
+    }
+    void resumeMusic() {
+        if (!m_pausedMusic) return;
+        m_pausedMusic = false;
+        auto fm = FMODAudioEngine::get();
+        if (fm && fm->m_backgroundMusicChannel) fm->m_backgroundMusicChannel->setPaused(false);
+    }
+    void start() {
+        auto fm = FMODAudioEngine::get();
+        if (!fm) return;
+        if (fm->m_backgroundMusicChannel) {
+            fm->m_backgroundMusicChannel->setPaused(true);
+            m_pausedMusic = true;
+        }
+        if (!m_soundPath.empty() && fm->m_system && fm->m_sfxVolume > 0.f) {
+            if (fm->m_system->createSound(m_soundPath.c_str(), FMOD_DEFAULT, nullptr, &m_sound) == FMOD_OK && m_sound) {
+                if (fm->m_system->playSound(m_sound, nullptr, false, &m_channel) == FMOD_OK && m_channel) {
+                    m_channel->setVolume(fm->m_sfxVolume);
+                } else {
+                    m_channel = nullptr;
+                }
+            }
+        }
+    }
+    void update(float dt) override {
+        if (m_done) return;
+        // the first frame after loading is a long one: start the clock from the next
+        if (!m_started) { m_started = true; this->start(); return; }
+        m_time += std::min(dt, 0.1f);
+        // keep the picture in sync with the sound while it plays
+        if (m_channel) {
+            bool playing = false;
+            unsigned int ms = 0;
+            if (m_channel->isPlaying(&playing) == FMOD_OK && playing
+                && m_channel->getPosition(&ms, FMOD_TIMEUNIT_MS) == FMOD_OK) {
+                m_time = ms / 1000.f;
+            }
+        }
+        int now = (int)(m_time * 1000.f);
+        uint8_t* buf = nullptr;
+        while (now >= m_nextTs && WebPAnimDecoderHasMoreFrames(m_dec)) {
+            int ts = 0;
+            if (!WebPAnimDecoderGetNext(m_dec, &buf, &ts)) break;
+            m_nextTs = ts;
+        }
+        if (buf) {
+            ccGLBindTexture2D(m_spr->getTexture()->getName());
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_w, m_h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+        }
+        if (!WebPAnimDecoderHasMoreFrames(m_dec) && now >= m_nextTs) this->finish(false);
+    }
+    void finish(bool skipped) {
+        if (m_done) return;
+        m_done = true;
+        this->unscheduleUpdate();
+        this->setTouchEnabled(false);
+        if (skipped && m_channel) m_channel->stop();
+        this->resumeMusic();
+        m_spr->runAction(CCFadeOut::create(0.35f));
+        m_black->runAction(CCFadeOut::create(0.35f));
+        this->runAction(CCSequence::create(
+            CCDelayTime::create(0.4f),
+            CCRemoveSelf::create(),
+            nullptr));
+    }
+};
+
 class $modify(FPMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
         auto pj = fpPack();
         if (!pj) return true;
         auto j = *pj;
+
+        // startup intro, once per launch
+        static bool s_introPlayed = false;
+        if (!s_introPlayed) {
+            s_introPlayed = true;
+            auto intro = fpFullPath(fpStr(j, "startup-intro"));
+            if (!intro.empty() && Mod::get()->getSettingValue<bool>("play-intro")) {
+                if (auto layer = FPIntro::create(intro, fpFullPath(fpStr(j, "startup-sound")))) {
+                    this->addChild(layer, 1000);
+                }
+            }
+        }
 
         // Mod reminder: packs draw a "get the mod" banner off one of these pictures
         // (using the frame offset, so it shows in the top-right corner). With the mod

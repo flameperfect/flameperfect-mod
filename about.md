@@ -11,6 +11,7 @@ Each pack picks which of these it uses:
 - **Your own icons on the title screen.** The icons running across the main menu use *your* equipped icons and colours.
 - **Custom menu backgrounds.** The pack's background (still or animated) shows on the main menu and the other menus, including other mods' menus like BetterInfo.
 - **No ground strip.** GD's ground is hidden on the menus so the background fills the whole screen.
+- **Startup intro.** The pack's own animated intro (with sound) plays when GD opens. Click to skip, or turn it off in this mod's settings.
 - **Custom loading screen.** An animated scene, a background picture or a colour, plus the pack's own loading messages.
 - **Social buttons.** The menu buttons open the pack maker's links, and the logo button opens their profile.
 - **LEVEL COMPLETE fly-in.** The text flies into the end-screen popup.
@@ -26,7 +27,7 @@ Each pack picks which of these it uses:
 2. Apply a Flameperfect pack in *Settings → Graphics → Textures*.
 3. Restart GD.
 
-If you also have **Menu Shaders** or **LoadingScreenTweaks**, turn them off. They draw over this mod.
+If you also have **Menu Shaders**, **LoadingScreenTweaks** or **Custom Startups**, turn them off. They draw over this mod.
 
 ## Get packs
 
@@ -34,4 +35,4 @@ Get packs or order your own custom pack: [ko-fi.com/flameperfect](https://ko-fi.
 
 ## For pack makers
 
-Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.
+Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `startup-intro`, `startup-sound`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.
