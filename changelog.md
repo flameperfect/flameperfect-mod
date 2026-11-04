@@ -1,3 +1,6 @@
+# v1.3.0
+- Loading sounds now only play during loading and on the main menu (they stop when you leave it and come back when you return), and are quieter.
+
 # v1.2.9
 - The menu always shows its own scene straight away (never the loading scene).
 

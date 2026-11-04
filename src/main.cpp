@@ -127,7 +127,7 @@ static void fpAmbStop() {
 static void fpAmbApply(float scale) {
     auto fm = FMODAudioEngine::get();
     float v = fm ? fm->m_sfxVolume : 0.f;
-    for (int i = 0; i < 2; i++) if (s_ambCh[i]) s_ambCh[i]->setVolume(v * s_ambLevel[i] * scale);
+    for (int i = 0; i < 2; i++) if (s_ambCh[i]) s_ambCh[i]->setVolume(v * s_ambLevel[i] * scale * 0.5f);
 }
 static void fpAmbStart(matjson::Value const& j) {
     fpAmbStop();
@@ -150,20 +150,27 @@ static void fpAmbProgress(float p) {
     s_ambLevel[1] = fpSmooth(0.60f, 0.95f, p);
     fpAmbApply(1.f);
 }
-// on the menu: the night sound carries on, then fades away
-class FPAmbFade : public CCNode {
+// on the main menu the night sound keeps playing; it stops as soon as you leave the main menu
+class FPAmbKeeper : public CCNode {
 public:
-    float m_t = 0.f, m_len = 7.f;
-    static FPAmbFade* create() { auto r = new FPAmbFade(); r->init(); r->autorelease(); r->scheduleUpdate(); return r; }
+    static FPAmbKeeper* create() { auto r = new FPAmbKeeper(); r->init(); r->autorelease(); return r; }
+    void onEnter() override {
+        CCNode::onEnter();
+        if (!s_ambCh[1]) {                       // coming back to the menu: start the night sound again
+            if (auto pj = fpPack()) { fpAmbStart(*pj); s_ambLevel[0] = 0.f; s_ambLevel[1] = 1.f; fpAmbApply(1.f); }
+        }
+        this->scheduleUpdate();
+    }
     void update(float dt) override {
-        if (s_handoffActive) return;          // the background is still finishing the day -> night change
-        m_t += dt;
         float g = std::min(1.f, dt * 1.5f);
         s_ambLevel[0] += (0.f - s_ambLevel[0]) * g;
         s_ambLevel[1] += (1.f - s_ambLevel[1]) * g;
-        float k = std::clamp(1.f - std::max(0.f, m_t - 2.0f) / (m_len - 2.0f), 0.f, 1.f);
-        fpAmbApply(k * k);
-        if (m_t >= m_len) { fpAmbStop(); this->removeFromParent(); }
+        fpAmbApply(1.f);
+    }
+    void onExit() override {
+        this->unscheduleUpdate();
+        fpAmbStop();
+        CCNode::onExit();
     }
 };
 
@@ -788,8 +795,8 @@ class $modify(FPMenuLayer, MenuLayer) {
         fpCheckForUpdate();
 
         // loading ambience: night sound carries over into the menu, then fades out
-        if (s_ambCh[0] || s_ambCh[1]) {
-            this->addChild(FPAmbFade::create());
+        if (!fpStr(j, "loading-sound-night").empty()) {
+            this->addChild(FPAmbKeeper::create());
         }
 
         // startup intro, once per launch
