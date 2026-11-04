@@ -11,7 +11,8 @@
 //    "menu-hide-ground":     true            hide the ground on the main menu (and on other menus with "all-menus")
 //    "all-menus":            true            also draw that background on the other menus
 //    "loading-background":   "file.png"      image behind the loading screen   (also: loading-bg.png)
-//    "loading-shader":       "file.glsl"     animated loading screen (same format as menu-shader)
+//    "loading-shader":       "file.glsl"     animated loading screen (same format as menu-shader;
+//                                            also gets "uniform float progress", 0..1 as GD loads)
 //    "loading-color":        [r,g,b]         loading screen colour (when no image)
 //    "loading-messages":     ["...", ...]    custom loading screen messages
 //    "startup-intro":        "intro.webp"    animated webp played once over the main menu at launch
@@ -107,7 +108,8 @@ public:
     CCGLProgram* m_prog = nullptr;
     std::vector<Ref<CCTexture2D>> m_tex;
     std::vector<GLint> m_texLoc;
-    GLint m_resLoc = -1, m_timeLoc = -1;
+    GLint m_resLoc = -1, m_timeLoc = -1, m_progLoc = -1;
+    float m_progress = 0.f;      // loading progress 0..1 (only moves on the loading screen)
     float m_time = 0.f;
 
     static FPBackground* create(std::string const& shaderFile) {
@@ -155,6 +157,7 @@ public:
         GLuint p = m_prog->getProgram();
         m_resLoc = glGetUniformLocation(p, "resolution");
         m_timeLoc = glGetUniformLocation(p, "time");
+        m_progLoc = glGetUniformLocation(p, "progress");
         for (size_t i = 0; i < sprites.size(); i++) {
             auto spr = CCSprite::create(sprites[i].c_str());
             if (!spr || !spr->getTexture()) continue;
@@ -174,6 +177,7 @@ public:
         GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
         if (m_resLoc >= 0) glUniform2f(m_resLoc, (float)vp[2], (float)vp[3]);
         if (m_timeLoc >= 0) glUniform1f(m_timeLoc, m_time);
+        if (m_progLoc >= 0) glUniform1f(m_progLoc, m_progress);
         for (size_t i = 0; i < m_tex.size(); i++) {
             ccGLBindTexture2DN((GLuint)i, m_tex[i]->getName());
             if (m_texLoc[i] >= 0) glUniform1i(m_texLoc[i], (GLint)i);
@@ -335,6 +339,13 @@ class $modify(FPLoadingLayer, LoadingLayer) {
             if (auto col = fpColorKey(j, "loading-color")) oldBg->setColor(*col);
         }
         return true;
+    }
+    void updateProgress(int progress) {
+        LoadingLayer::updateProgress(progress);
+        // shaders can read this as "uniform float progress" (0 at the start, 1 when loaded)
+        if (auto bg = typeinfo_cast<FPBackground*>(this->getChildByID("loading-shader"_spr))) {
+            bg->m_progress = std::clamp(progress / 100.f, 0.f, 1.f);
+        }
     }
     char const* getLoadingString() {
         auto pj = fpPack();
