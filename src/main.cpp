@@ -19,6 +19,7 @@
 //    "end-screen-bubbles":   "bubble.png"    bubbles rise through the end screen when it opens
 //    "end-screen-color":     [r,g,b]         tint of the end-screen panel
 //    "pause-color":          [r,g,b]         tint of the pause-menu panel
+//    "pause-hide-background": true           no dark panel behind the pause menu
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log the end-screen / pause-menu layout (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
@@ -782,6 +783,11 @@ class $modify(FPPauseLayer, PauseLayer) {
         Ref<PauseLayer> self = this;
         Loader::get()->queueInMainThread([self]() {
             fpTint(self.data(), "background", "pause-color");
+            if (auto pj = fpPack()) {
+                if (fpBool(*pj, "pause-hide-background")) {
+                    if (auto bg = self->getChildByID("background")) bg->setVisible(false);
+                }
+            }
             if (auto pj = fpPack()) {
                 if (fpBool(*pj, "pause-bubbles")) fpBubbleStream(self.data(), fpStr(*pj, "end-screen-bubbles"));
             }

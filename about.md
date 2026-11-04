@@ -34,4 +34,4 @@ Get packs or order your own custom pack: [ko-fi.com/flameperfect](https://ko-fi.
 
 ## For pack makers
 
-Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.
+Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.

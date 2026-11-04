@@ -1,3 +1,6 @@
+# v1.0.12
+- Packs can remove the dark panel behind the pause menu (`pause-hide-background`).
+
 # v1.0.11
 - Packs can tint the end-screen and pause-menu panels (`end-screen-color`, `pause-color`).
 - Optional bubbles drifting up while paused (`pause-bubbles`).
