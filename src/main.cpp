@@ -430,7 +430,7 @@ class $modify(FPLayer, CCLayer) {
                     this->addChild(bg, spr->getZOrder() - 1);
                     spr->setVisible(false);
                 }
-                fpDumpTree(this, getObjectName(this).c_str());
+                fpDumpTree(this, std::string(getObjectName(this)).c_str());
                 break;
             }
         }
@@ -458,7 +458,7 @@ class $modify(FPLayer, CCLayer) {
                     this->addChild(bg, full->getZOrder() - 1);
                     full->setVisible(false);
                 }
-                fpDumpTree(this, getObjectName(this).c_str());
+                fpDumpTree(this, std::string(getObjectName(this)).c_str());
             }
         }
 
