@@ -1,3 +1,6 @@
+# v1.0.6
+- The "get the mod" banner can now hang off the More Games button, so it only shows on the main menu (not the loading screen). The mod hides it.
+
 # v1.0.5
 - The "get the mod" banner now hangs off the GEOMETRY DASH logo instead of the Daily button, so it no longer moves when you press Daily. The mod hides it on the main menu and the loading screen.
 

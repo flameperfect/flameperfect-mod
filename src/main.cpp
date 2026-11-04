@@ -317,22 +317,23 @@ class $modify(FPMenuLayer, MenuLayer) {
         if (!pj) return true;
         auto j = *pj;
 
+        // Mod reminder: packs draw a "get the mod" banner off one of these pictures
+        // (using the frame offset, so it shows in the top-right corner). With the mod
+        // installed, swap in the clean picture. setDisplayFrame also resets the offset.
         fpCleanLogo(this);
-
-        // older packs: swap the Daily button's "get the mod" artwork for the clean one.
-        // setDisplayFrame also resets the frame offset the pack uses to draw the
-        // reminder banner away from the chest (in the top-right corner).
-        if (!fpFullPath("fp_daily_clean.png").empty()) {
-            if (auto btn = fpFindButton(this, "GJ_dailyRewardBtn_001.png")) {
-                if (auto clean = CCSprite::create("fp_daily_clean.png")) {
-                    if (auto spr = typeinfo_cast<CCSprite*>(btn->getNormalImage())) {
-                        spr->setDisplayFrame(clean->displayFrame());
-                        btn->setContentSize(spr->getScaledContentSize());
-                        spr->setPosition(btn->getContentSize() / 2);
-                    }
-                }
-            }
-        }
+        auto cleanButton = [this](char const* frame, char const* cleanFile) {
+            if (fpFullPath(cleanFile).empty()) return;
+            auto btn = fpFindButton(this, frame);
+            if (!btn) return;
+            auto clean = CCSprite::create(cleanFile);
+            auto spr = typeinfo_cast<CCSprite*>(btn->getNormalImage());
+            if (!clean || !spr) return;
+            spr->setDisplayFrame(clean->displayFrame());
+            btn->setContentSize(spr->getScaledContentSize());
+            spr->setPosition(btn->getContentSize() / 2);
+        };
+        cleanButton("GJ_moreGamesBtn_001.png", "fp_moregames_clean.png");
+        cleanButton("GJ_dailyRewardBtn_001.png", "fp_daily_clean.png");
 
         // background
         auto shader = fpStr(j, "menu-shader");
