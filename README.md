@@ -1,4 +1,4 @@
-# Flameperfect Pack Engine (Geode mod)
+# The Flame Engine (Geode mod)
 
 Powers Flameperfect Geometry Dash texture packs. See `about.md` for what it does.
 

@@ -1,4 +1,4 @@
-# Flameperfect Pack Engine
+# The Flame Engine
 
 **The mod that brings Flameperfect texture packs to life.**
 

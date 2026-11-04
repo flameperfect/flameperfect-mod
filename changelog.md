@@ -1,3 +1,6 @@
+# v1.1.1
+- New name: The Flame Engine.
+
 # v1.1.0
 - New name: Flameperfect Pack Engine.
 - Lists, comments and profiles can be recoloured from the pack (`list-colors`, `background-color`), and profile boxes are recoloured once a profile finishes loading. Packs no longer need Happy Textures for this.
