@@ -21,6 +21,7 @@
 //  "install the Flameperfect mod" note, which this mod swaps for the clean image.
 // =============================================================================
 #include <Geode/Geode.hpp>
+#include <algorithm>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/web.hpp>
 
@@ -34,12 +35,33 @@ static std::string fpFullPath(std::string const& name) {
     if (full.empty() || !fu->isFileExist(full)) return "";
     return full;
 }
+// The applied pack's flameperfect.json. Cached, and only re-read when the file
+// (or the applied pack) changes, so hooks that run often stay cheap.
 static std::optional<matjson::Value> fpPack() {
+    static std::string s_path;
+    static std::filesystem::file_time_type s_time{};
+    static std::optional<matjson::Value> s_json;
+
     auto full = fpFullPath("flameperfect.json");
-    if (full.empty()) return std::nullopt;
+    if (full.empty()) {
+        s_path.clear();
+        s_json = std::nullopt;
+        return std::nullopt;
+    }
+    std::error_code ec;
+    auto time = std::filesystem::last_write_time(std::filesystem::path(full), ec);
+    if (full == s_path && !ec && time == s_time) return s_json;
+
+    s_path = full;
+    s_time = ec ? std::filesystem::file_time_type{} : time;
     auto res = utils::file::readJson(std::filesystem::path(full));
-    if (!res) return std::nullopt;
-    return res.unwrap();
+    if (!res) {
+        log::warn("Flameperfect: couldn't read {}: {}", full, res.unwrapErr());
+        s_json = std::nullopt;
+    } else {
+        s_json = res.unwrap();
+    }
+    return s_json;
 }
 static bool fpBool(matjson::Value const& j, char const* key) {
     return j.contains(key) && j[key].asBool().unwrapOr(false);
@@ -49,7 +71,8 @@ static std::string fpStr(matjson::Value const& j, char const* key) {
 }
 static std::optional<ccColor3B> fpColor(matjson::Value const& v) {
     if (!v.isArray() || v.size() < 3) return std::nullopt;
-    return ccColor3B{ (GLubyte)v[0].asInt().unwrapOr(255), (GLubyte)v[1].asInt().unwrapOr(255), (GLubyte)v[2].asInt().unwrapOr(255) };
+    auto c = [&](size_t i) { return (GLubyte)std::clamp<int64_t>(v[i].asInt().unwrapOr(255), 0, 255); };
+    return ccColor3B{ c(0), c(1), c(2) };
 }
 static std::optional<ccColor3B> fpColorKey(matjson::Value const& j, char const* key) {
     if (!j.contains(key)) return std::nullopt;

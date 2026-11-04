@@ -1,3 +1,7 @@
+# v1.0.4
+- Reads the pack's settings once and re-reads only when they change (faster menus).
+- Colours in pack settings are clamped to 0-255.
+
 # v1.0.3
 - Node IDs now use the mod's ID prefix, as Geode recommends.
 
