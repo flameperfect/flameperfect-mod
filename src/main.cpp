@@ -17,6 +17,9 @@
 //    "level-complete-flyin": true            LEVEL COMPLETE! flies into the end-screen popup
 //    "chest-glow":           [r,g,b]         recolour the chest-opening glow + particles
 //    "end-screen-bubbles":   "bubble.png"    bubbles rise through the end screen when it opens
+//    "end-screen-color":     [r,g,b]         tint of the end-screen panel
+//    "pause-color":          [r,g,b]         tint of the pause-menu panel
+//    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log the end-screen / pause-menu layout (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
 //    "node-colors":          {"node-id":[r,g,b]}   recolour things other mods colour in code
@@ -427,6 +430,7 @@ class $modify(FPLayer, CCLayer) {
                     this->addChild(bg, spr->getZOrder() - 1);
                     spr->setVisible(false);
                 }
+                fpDumpTree(this, getObjectName(this).c_str());
                 break;
             }
         }
@@ -454,6 +458,7 @@ class $modify(FPLayer, CCLayer) {
                     this->addChild(bg, full->getZOrder() - 1);
                     full->setVisible(false);
                 }
+                fpDumpTree(this, getObjectName(this).c_str());
             }
         }
 
@@ -703,6 +708,46 @@ static void fpEndBubbles(CCNode* root) {
     }
 }
 
+// tint a popup's dark panel (keeps its see-through opacity)
+static void fpTint(CCNode* root, char const* id, char const* key) {
+    auto pj = fpPack();
+    if (!pj || !root) return;
+    auto col = fpColorKey(*pj, key);
+    if (!col) return;
+    if (auto node = typeinfo_cast<CCRGBAProtocol*>(root->getChildByIDRecursive(id))) node->setColor(*col);
+}
+
+// a slow, endless stream of bubbles (pause menu)
+static void fpBubbleStream(CCNode* root, std::string const& file) {
+    if (file.empty() || fpFullPath(file).empty() || root->getChildByID("bubble-stream"_spr)) return;
+    auto holder = CCNode::create();
+    holder->setID("bubble-stream"_spr);
+    root->addChild(holder, -1);
+    auto win = CCDirector::get()->getWinSize();
+    auto spawn = [holder, file, win]() {
+        auto b = CCSprite::create(file.c_str());
+        if (!b) return;
+        float r = (float)rand() / RAND_MAX;
+        float scale = 0.25f + 0.45f * ((float)rand() / RAND_MAX);
+        float time = 5.f + 4.f * ((float)rand() / RAND_MAX);
+        b->setPosition(ccp(win.width * (0.08f + 0.84f * r), -10.f));
+        b->setScale(scale);
+        b->setOpacity(0);
+        holder->addChild(b);
+        float wob = (rand() % 2 ? 1.f : -1.f) * (5.f + 8.f * r);
+        b->runAction(CCSpawn::create(
+            CCFadeTo::create(0.5f, 150),
+            CCMoveBy::create(time, ccp(0, win.height + 20.f)),
+            CCRepeat::create(CCSequence::create(CCMoveBy::create(0.8f, ccp(wob, 0)), CCMoveBy::create(0.8f, ccp(-wob, 0)), nullptr), (unsigned)(time / 1.6f)),
+            nullptr
+        ));
+        b->runAction(CCSequence::create(CCDelayTime::create(time), CCRemoveSelf::create(), nullptr));
+    };
+    holder->runAction(CCRepeatForever::create(CCSequence::create(
+        CallFuncExt::create(spawn), CCDelayTime::create(0.45f), nullptr
+    )));
+}
+
 class $modify(FPEndLevelLayer, EndLevelLayer) {
     void customSetup() {
         EndLevelLayer::customSetup();
@@ -710,6 +755,7 @@ class $modify(FPEndLevelLayer, EndLevelLayer) {
         Ref<EndLevelLayer> self = this;
         Loader::get()->queueInMainThread([self]() {
             fpAddEndIcons(self->m_mainLayer ? (CCNode*)self->m_mainLayer : (CCNode*)self.data());
+            fpTint(self.data(), "background", "end-screen-color");
             fpDumpTree(self.data(), "EndLevelLayer");
         });
     }
@@ -732,7 +778,13 @@ class $modify(FPPauseLayer, PauseLayer) {
     void customSetup() {
         PauseLayer::customSetup();
         Ref<PauseLayer> self = this;
-        Loader::get()->queueInMainThread([self]() { fpDumpTree(self.data(), "PauseLayer"); });
+        Loader::get()->queueInMainThread([self]() {
+            fpTint(self.data(), "background", "pause-color");
+            if (auto pj = fpPack()) {
+                if (fpBool(*pj, "pause-bubbles")) fpBubbleStream(self.data(), fpStr(*pj, "end-screen-bubbles"));
+            }
+            fpDumpTree(self.data(), "PauseLayer");
+        });
     }
 };
 

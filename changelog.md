@@ -1,3 +1,7 @@
+# v1.0.11
+- Packs can tint the end-screen and pause-menu panels (`end-screen-color`, `pause-color`).
+- Optional bubbles drifting up while paused (`pause-bubbles`).
+
 # v1.0.10
 - The pack background now also replaces other mods' menu backgrounds (like BetterInfo's).
 - Bubbles can rise through the end screen when it opens (`end-screen-bubbles`).
