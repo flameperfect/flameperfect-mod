@@ -1,3 +1,8 @@
+# v1.1.0
+- New name: Flameperfect Pack Engine.
+- Lists, comments and profiles can be recoloured from the pack (`list-colors`, `background-color`), and profile boxes are recoloured once a profile finishes loading. Packs no longer need Happy Textures for this.
+- One mod now covers everything Flameperfect packs used other mods for.
+
 # v1.0.16
 - `ui-brown-to` now also recolours the brown outlines around lists (profile, messages, friends, comments).
 

@@ -26,7 +26,11 @@
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log the end-screen / pause-menu layout (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
-//    "node-colors":          {"node-id":[r,g,b]}   recolour things other mods colour in code
+//    "node-colors":          {"node-id":[r,g,b]}   recolour nodes by node ID (search boxes, profile boxes, other mods)
+//    "list-colors":          {"list-bg"|"list-cell-odd"|"list-cell-even"|"list-cell-selected"|"comment-list-bg"|
+//                             "comment-cell-odd"|"comment-cell-even"|"comment-cell-box-odd"|"comment-cell-box-even"|
+//                             "comment-cell-small-odd"|"comment-cell-small-even": [r,g,b]}   GD's brown lists
+//    "background-color":     [r,g,b]         GD's blue menu background tint
 //    "links":                {"facebook"|"twitter"|"youtube"|"twitch"|"discord"|"robtop": url}
 //  Mod reminder: a pack can ship "fp_daily_clean.png"; its Daily button carries an
 //  "install the Flameperfect mod" note, which this mod swaps for the clean image.
@@ -626,6 +630,92 @@ class $modify(FPMenuLayer, MenuLayer) {
 // Other menus: pack background behind every menu that uses GJ_gradientBG,
 // plus node recolours (e.g. Integrated Demonlist's brown search bar)
 #include <Geode/modify/CCLayer.hpp>
+#include <Geode/modify/CustomListView.hpp>
+#include <Geode/modify/GJListLayer.hpp>
+#include <Geode/modify/GJCommentListLayer.hpp>
+#include <Geode/modify/ProfilePage.hpp>
+
+// "node-colors": recolour nodes by their node ID (other mods' things, search boxes, ...)
+static void fpApplyNodeColors(CCNode* root) {
+    auto pj = fpPack();
+    if (!root || !pj || !pj->contains("node-colors")) return;
+    for (auto& item : (*pj)["node-colors"]) {
+        auto key = item.getKey();
+        if (!key) continue;
+        auto node = root->getChildByIDRecursive(*key);
+        if (!node) continue;
+        auto rgba = typeinfo_cast<CCRGBAProtocol*>(node);
+        auto col = fpColor(item);
+        if (rgba && col) rgba->setColor(*col);
+    }
+}
+
+// "list-colors": GD's brown list panels and rows, in the pack's colours.
+static std::optional<ccColor3B> fpListColor(char const* key) {
+    auto pj = fpPack();
+    if (!key || !pj || !pj->contains("list-colors")) return std::nullopt;
+    auto lc = (*pj)["list-colors"];
+    if (!lc.contains(key)) return std::nullopt;
+    return fpColor(lc[key]);
+}
+static void fpColorCell(TableViewCell* cell) {
+    if (!cell || !cell->m_backgroundLayer) return;
+    auto c = cell->m_backgroundLayer->getColor();
+    auto is = [&](int r, int g, int b) { return c.r == r && c.g == g && c.b == b; };
+    bool comment = typeinfo_cast<CommentCell*>(cell) != nullptr;
+    char const* row = nullptr;
+    char const* box = nullptr;
+    if (is(161, 88, 44))      { row = comment ? "comment-cell-odd" : "list-cell-odd";   box = comment ? "comment-cell-box-odd" : nullptr; }
+    else if (is(194, 114, 62)) { row = comment ? "comment-cell-even" : "list-cell-even"; box = comment ? "comment-cell-box-even" : nullptr; }
+    else if (comment && is(156, 85, 42)) row = "comment-cell-small-odd";
+    else if (comment && is(144, 79, 39)) row = "comment-cell-small-even";
+    else if (is(230, 150, 10)) row = "list-cell-selected";
+    if (!row) return;
+    if (auto col = fpListColor(row)) cell->m_backgroundLayer->setColor(*col);
+    if (box) {
+        if (auto col = fpListColor(box)) {
+            if (auto rgba = typeinfo_cast<CCRGBAProtocol*>(cell->getChildByIDRecursive("background"))) rgba->setColor(*col);
+        }
+    }
+}
+
+class $modify(FPCustomListView, CustomListView) {
+    void setupList(float y) {
+        CustomListView::setupList(y);
+        if (!m_tableView || !m_tableView->m_cellArray) return;
+        for (auto cell : CCArrayExt<TableViewCell*>(m_tableView->m_cellArray)) fpColorCell(cell);
+    }
+};
+
+class $modify(FPGJListLayer, GJListLayer) {
+    bool init(BoomListView* list, char const* title, ccColor4B color, float w, float h, int type) {
+        if (!GJListLayer::init(list, title, color, w, h, type)) return false;
+        auto c = this->getColor();
+        if (c.r == 191 && c.g == 114 && c.b == 62) {
+            if (auto col = fpListColor("list-bg")) this->setColor(*col);
+        }
+        return true;
+    }
+};
+
+class $modify(FPGJCommentListLayer, GJCommentListLayer) {
+    bool init(BoomListView* list, char const* title, ccColor4B color, float w, float h, bool blueBorder) {
+        if (!GJCommentListLayer::init(list, title, color, w, h, blueBorder)) return false;
+        auto c = this->getColor();
+        if (c.r == 191 && c.g == 114 && c.b == 62) {
+            if (auto col = fpListColor("comment-list-bg")) this->setColor(*col);
+        }
+        return true;
+    }
+};
+
+// profiles fill in after they download, so colour them again once loaded
+class $modify(FPProfilePage, ProfilePage) {
+    void loadPageFromUserInfo(GJUserScore* score) {
+        ProfilePage::loadPageFromUserInfo(score);
+        fpApplyNodeColors(this);
+    }
+};
 
 class $modify(FPLayer, CCLayer) {
     void onEnter() {
@@ -634,15 +724,13 @@ class $modify(FPLayer, CCLayer) {
         if (!pj) return;
         auto j = *pj;
 
-        if (j.contains("node-colors")) {
-            for (auto& item : j["node-colors"]) {
-                auto key = item.getKey();
-                if (!key) continue;
-                auto node = this->getChildByIDRecursive(*key);
-                if (!node) continue;
-                auto rgba = typeinfo_cast<CCRGBAProtocol*>(node);
-                auto col = fpColor(item);
-                if (rgba && col) rgba->setColor(*col);
+        fpApplyNodeColors(this);
+
+        // GD's blue menu background tint (when the pack shader isn't drawn there)
+        if (auto col = fpColorKey(j, "background-color")) {
+            if (auto bg = typeinfo_cast<CCSprite*>(this->getChildByID("background"))) {
+                auto c = bg->getColor();
+                if (c.r == 0 && c.g == 102 && c.b == 255) bg->setColor(*col);
             }
         }
 

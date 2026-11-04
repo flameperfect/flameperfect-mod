@@ -4,19 +4,18 @@
         "win": "2.2081"
     },
     "id": "flameperfect.flameperfect",
-    "name": "Flameperfect",
-    "version": "v1.0.16",
+    "name": "Flameperfect Pack Engine",
+    "version": "v1.1.0",
     "developer": "Flameperfect",
-    "description": "Powers Flameperfect texture packs: your own icons on the title screen, custom menu and loading-screen backgrounds, themed effects and more. Does nothing unless a Flameperfect pack is applied.",
+    "description": "Brings Flameperfect texture packs to life: animated menus and loading screens, startup intros, themed lists and popups, your own icons on the title screen.",
     "early-load": true,
     "tags": [
         "customization",
         "interface"
     ],
-    "links": {
-        "homepage": "https://ko-fi.com/flameperfect"
+    "dependencies": {
+        "geode.node-ids": ">=v1.15.0"
     },
-    "repository": "https://github.com/flameperfect/flameperfect-mod",
     "settings": {
         "play-intro": {
             "type": "bool",
@@ -24,5 +23,9 @@
             "name": "Play pack intros",
             "description": "Play the applied Flameperfect pack's startup animation when GD opens. Click to skip it."
         }
-    }
+    },
+    "links": {
+        "homepage": "https://ko-fi.com/flameperfect"
+    },
+    "repository": "https://github.com/flameperfect/flameperfect-mod"
 }
