@@ -1,3 +1,7 @@
+# v1.0.10
+- The pack background now also replaces other mods' menu backgrounds (like BetterInfo's).
+- Bubbles can rise through the end screen when it opens (`end-screen-bubbles`).
+
 # v1.0.9
 - One end-screen icon now sits attached in front of LEVEL COMPLETE (same height as the text). Two icons sit either side, sized to the text.
 

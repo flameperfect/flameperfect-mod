@@ -16,6 +16,8 @@
 //    "loading-messages":     ["...", ...]    custom loading screen messages
 //    "level-complete-flyin": true            LEVEL COMPLETE! flies into the end-screen popup
 //    "chest-glow":           [r,g,b]         recolour the chest-opening glow + particles
+//    "end-screen-bubbles":   "bubble.png"    bubbles rise through the end screen when it opens
+//    "debug-layout":         true            log the end-screen / pause-menu layout (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
 //    "node-colors":          {"node-id":[r,g,b]}   recolour things other mods colour in code
 //    "links":                {"facebook"|"twitter"|"youtube"|"twitch"|"discord"|"robtop": url}
@@ -25,6 +27,7 @@
 #include <Geode/Geode.hpp>
 #include <algorithm>
 #include <functional>
+#include <set>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/web.hpp>
 
@@ -172,6 +175,18 @@ public:
         ccGLBindTexture2DN(0, 0);
     }
 };
+
+// file name a texture was loaded from ("" if unknown)
+static std::string fpTextureName(CCTexture2D* tex) {
+    if (!tex) return "";
+    auto dict = CCTextureCache::sharedTextureCache()->m_pTextures;
+    if (!dict) return "";
+    CCDictElement* el = nullptr;
+    CCDICT_FOREACH(dict, el) {
+        if (el->getObject() == tex) return el->getStrKey();
+    }
+    return "";
+}
 
 // ---------------------------------------------------------------------------
 // Mod reminder on the logo: packs draw a "get the mod" banner off the GEOMETRY DASH
@@ -417,6 +432,32 @@ class $modify(FPLayer, CCLayer) {
             }
         }
 
+        // other mods' menus (e.g. BetterInfo) draw their own full-screen picture instead of
+        // GJ_gradientBG: replace the lowest full-screen sprite on top-level menu layers too
+        if (fpBool(j, "all-menus") && !this->getChildByID("background"_spr)
+            && typeinfo_cast<CCScene*>(this->getParent())
+            && !typeinfo_cast<MenuLayer*>(this) && !typeinfo_cast<GJBaseGameLayer*>(this)
+            && !typeinfo_cast<LoadingLayer*>(this) && !typeinfo_cast<FLAlertLayer*>(this)) {
+            auto shader = fpStr(j, "menu-shader");
+            auto win = CCDirector::get()->getWinSize();
+            CCSprite* full = nullptr;
+            for (auto child : CCArrayExt<CCNode*>(this->getChildren())) {
+                auto spr = typeinfo_cast<CCSprite*>(child);
+                if (!spr || !spr->isVisible()) continue;
+                auto box = spr->boundingBox();
+                if (box.size.width < win.width * 0.9f || box.size.height < win.height * 0.9f) continue;
+                // only GD's own level backgrounds (game_bg_XX), so special art (shops, vaults) stays
+                if (fpTextureName(spr->getTexture()).find("game_bg_") == std::string::npos) continue;
+                if (!full || spr->getZOrder() < full->getZOrder()) full = spr;
+            }
+            if (full && !shader.empty()) {
+                if (auto bg = FPBackground::create(shader)) {
+                    this->addChild(bg, full->getZOrder() - 1);
+                    full->setVisible(false);
+                }
+            }
+        }
+
         // menus that got the pack background: also hide their ground strip
         // (e.g. the coloured floor under the main levels), so the background shows to the bottom
         if (fpBool(j, "menu-hide-ground") && this->getChildByID("background"_spr)) {
@@ -596,6 +637,73 @@ static void fpAddEndIcons(CCNode* root) {
     }
 }
 
+// log a layer's node tree once (used to plan pack designs for popups)
+static void fpDumpTree(CCNode* root, char const* label) {
+    static std::set<std::string> done;
+    if (!root || done.count(label)) return;
+    auto pj = fpPack();
+    if (!pj || !fpBool(*pj, "debug-layout")) return;
+    done.insert(label);
+    log::info("Flameperfect layout dump: {}", label);
+    std::function<void(CCNode*, int)> dump = [&](CCNode* n, int d) {
+        for (auto c : CCArrayExt<CCNode*>(n->getChildren())) {
+            auto spr = typeinfo_cast<CCSprite*>(c);
+            auto tex = spr ? fpTextureName(spr->getTexture()) : std::string();
+            auto slash = tex.find_last_of("/\\");
+            if (slash != std::string::npos) tex = tex.substr(slash + 1);
+            log::info("{}{} id='{}' z={} pos=({:.0f},{:.0f}) size=({:.0f},{:.0f}) col=({},{},{}) {}", std::string(d * 2, ' '),
+                getObjectName(c), c->getID(), c->getZOrder(), c->getPositionX(), c->getPositionY(),
+                c->getScaledContentSize().width, c->getScaledContentSize().height,
+                typeinfo_cast<CCRGBAProtocol*>(c) ? (int)typeinfo_cast<CCRGBAProtocol*>(c)->getColor().r : -1,
+                typeinfo_cast<CCRGBAProtocol*>(c) ? (int)typeinfo_cast<CCRGBAProtocol*>(c)->getColor().g : -1,
+                typeinfo_cast<CCRGBAProtocol*>(c) ? (int)typeinfo_cast<CCRGBAProtocol*>(c)->getColor().b : -1,
+                tex);
+            if (d < 4) dump(c, d + 1);
+        }
+    };
+    dump(root, 1);
+}
+
+// bubbles rising through the end-screen popup when it opens (pack key "end-screen-bubbles")
+static void fpEndBubbles(CCNode* root) {
+    auto pj = fpPack();
+    if (!pj) return;
+    auto file = fpStr(*pj, "end-screen-bubbles");
+    if (file.empty() || fpFullPath(file).empty() || root->getChildByID("bubbles"_spr)) return;
+    auto holder = CCNode::create();
+    holder->setID("bubbles"_spr);
+    root->addChild(holder, 100);
+    auto win = CCDirector::get()->getWinSize();
+    for (int i = 0; i < 26; i++) {
+        auto b = CCSprite::create(file.c_str());
+        if (!b) return;
+        float r = (float)rand() / RAND_MAX;
+        float scale = 0.25f + 0.55f * ((float)rand() / RAND_MAX);
+        float x = win.width / 2 + (r - 0.5f) * 360.f;
+        float y = win.height / 2 - 120.f - 20.f * ((float)rand() / RAND_MAX);
+        float rise = 150.f + 130.f * ((float)rand() / RAND_MAX);
+        float time = 1.3f + 1.0f * ((float)rand() / RAND_MAX);
+        float delay = 0.25f + 0.6f * ((float)rand() / RAND_MAX);
+        b->setPosition(ccp(x, y));
+        b->setScale(scale);
+        b->setOpacity(0);
+        holder->addChild(b);
+        float wob = (rand() % 2 ? 1.f : -1.f) * (6.f + 6.f * r);
+        b->runAction(CCSequence::create(
+            CCDelayTime::create(delay),
+            CCSpawn::create(
+                CCFadeTo::create(0.15f, 220),
+                CCEaseSineOut::create(CCMoveBy::create(time, ccp(0, rise))),
+                CCSequence::create(CCMoveBy::create(time / 3, ccp(wob, 0)), CCMoveBy::create(time / 3, ccp(-2 * wob, 0)), CCMoveBy::create(time / 3, ccp(wob, 0)), nullptr),
+                CCSequence::create(CCDelayTime::create(time * 0.6f), CCFadeOut::create(time * 0.4f), nullptr),
+                nullptr
+            ),
+            CCRemoveSelf::create(),
+            nullptr
+        ));
+    }
+}
+
 class $modify(FPEndLevelLayer, EndLevelLayer) {
     void customSetup() {
         EndLevelLayer::customSetup();
@@ -603,11 +711,13 @@ class $modify(FPEndLevelLayer, EndLevelLayer) {
         Ref<EndLevelLayer> self = this;
         Loader::get()->queueInMainThread([self]() {
             fpAddEndIcons(self->m_mainLayer ? (CCNode*)self->m_mainLayer : (CCNode*)self.data());
+            fpDumpTree(self.data(), "EndLevelLayer");
         });
     }
     void showLayer(bool instant) {
         EndLevelLayer::showLayer(instant);
         fpAddEndIcons(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
+        fpEndBubbles(this);
         if (!s_completeText || !s_completeText->getParent()) return;
         auto title = fpFindComplete(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
         if (!title) return;
@@ -615,6 +725,15 @@ class $modify(FPEndLevelLayer, EndLevelLayer) {
         if (!scene) return;
         scene->addChild(FPFlyNode::create(s_completeText, title), 10000);
         s_completeText = nullptr;
+    }
+};
+
+#include <Geode/modify/PauseLayer.hpp>
+class $modify(FPPauseLayer, PauseLayer) {
+    void customSetup() {
+        PauseLayer::customSetup();
+        Ref<PauseLayer> self = this;
+        Loader::get()->queueInMainThread([self]() { fpDumpTree(self.data(), "PauseLayer"); });
     }
 };
 
