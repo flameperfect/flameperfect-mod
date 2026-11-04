@@ -419,7 +419,7 @@ static bool fpOpenLink(char const* key) {
 // Updates: The Flame Engine isn't on the Geode index, so it checks GitHub itself.
 // Once per launch (only with a Flameperfect pack applied) it looks at the latest
 // release; if it's newer it asks, downloads the .geode into geode/mods, and the new
-// version loads next time GD starts. "Later" skips that version.
+// version loads next time GD starts. "Later" asks again next launch.
 static bool s_introRunning = false;
 static std::optional<std::pair<std::string, std::string>> s_pendingUpdate;   // tag, download url
 static std::optional<arc::TaskHandle<void>> s_updateTask;
@@ -456,7 +456,6 @@ static void fpShowPendingUpdate() {
         "Later", "Update",
         [tag, url](FLAlertLayer*, bool update) {
             if (update) fpDownloadUpdate(tag, url);
-            else Mod::get()->setSavedValue<std::string>("skipped-version", tag);
         });
 }
 
@@ -475,7 +474,7 @@ static void fpCheckForUpdate() {
             auto json = res.json();
             if (!json) return;
             auto tag = (*json)["tag_name"].asString().unwrapOr("");
-            if (tag.empty() || tag == Mod::get()->getSavedValue<std::string>("skipped-version")) return;
+            if (tag.empty()) return;
             auto latest = VersionInfo::parse(tag.starts_with("v") ? tag.substr(1) : tag);
             if (!latest || !(Mod::get()->getVersion() < latest.unwrap())) return;
             std::string url;

@@ -1,3 +1,6 @@
+# v1.2.2
+- Clicking "Later" on the update popup now asks again next time GD opens, instead of skipping that version for good.
+
 # v1.2.1
 - The update check gives up quickly if GitHub doesn't answer, so it never holds anything up.
 
