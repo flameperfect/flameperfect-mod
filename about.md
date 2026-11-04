@@ -25,7 +25,7 @@ It only does anything while a Flameperfect pack is applied with **Texture Loader
 - **Colour fixes for other mods.** Things other mods colour in code (like the Integrated Demonlist search bar) are recoloured to match.
 
 **No more reminder**
-- Flameperfect packs show a small "Get the Flameperfect mod" note in the top-right corner when this mod is missing. Installing it removes the note.
+- Flameperfect packs show a small "Get The Flame Engine on Geode" note in the top-right corner when this mod is missing. Installing it removes the note.
 
 ## How to use it
 
