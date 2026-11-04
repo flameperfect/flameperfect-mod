@@ -1,3 +1,6 @@
+# v1.0.9
+- One end-screen icon now sits attached in front of LEVEL COMPLETE (same height as the text). Two icons sit either side, sized to the text.
+
 # v1.0.8
 - Fixed end-screen icons not appearing.
 

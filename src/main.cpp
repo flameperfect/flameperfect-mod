@@ -16,7 +16,7 @@
 //    "loading-messages":     ["...", ...]    custom loading screen messages
 //    "level-complete-flyin": true            LEVEL COMPLETE! flies into the end-screen popup
 //    "chest-glow":           [r,g,b]         recolour the chest-opening glow + particles
-//    "end-screen-icons":     ["a.png","b.png"]  up to 2 icons beside LEVEL COMPLETE (1 = used on both sides)
+//    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
 //    "node-colors":          {"node-id":[r,g,b]}   recolour things other mods colour in code
 //    "links":                {"facebook"|"twitter"|"youtube"|"twitch"|"discord"|"robtop": url}
 //  Mod reminder: a pack can ship "fp_daily_clean.png"; its Daily button carries an
@@ -545,32 +545,54 @@ static void fpAddEndIcons(CCNode* root) {
     if (parent->getChildByID("end-icon-left"_spr)) return;
 
     auto titleSize = title->getScaledContentSize();
-    for (int i = 0; i < 2; i++) {
-        auto file = list[std::min<size_t>(i, list.size() - 1)].asString().unwrapOr("");
-        if (file.empty() || fpFullPath(file).empty()) continue;
-        auto icon = CCSprite::create(file.c_str());
-        if (!icon) continue;
-        float target = titleSize.height * 1.25f;
-        float scale = target / std::max(1.f, icon->getContentSize().height);
-        float side = i == 0 ? -1.f : 1.f;
-        icon->setPosition(title->getPosition() + ccp(side * (titleSize.width / 2 + target / 2 + 10.f), 0));
-        icon->setID(i == 0 ? "end-icon-left"_spr : "end-icon-right"_spr);
+    auto pop = [](CCSprite* icon, float scale, float delay) {
         icon->setScale(0.f);
-        parent->addChild(icon, title->getZOrder());
-        // pop in, then bob gently (the two icons out of step)
         icon->runAction(CCSequence::create(
-            CCDelayTime::create(0.15f + 0.1f * i),
+            CCDelayTime::create(delay),
             CCEaseBackOut::create(CCScaleTo::create(0.35f, scale)),
             nullptr
         ));
-        auto bob = CCSequence::create(
-            CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, 4.f))),
-            CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, -4.f))),
+    };
+
+    if (list.size() == 1) {
+        // one icon: attached to the front of the title, same height as the text;
+        // the title shifts right so the pair stays centred in the popup
+        auto file = list[0].asString().unwrapOr("");
+        if (file.empty() || fpFullPath(file).empty()) return;
+        auto icon = CCSprite::create(file.c_str());
+        if (!icon) return;
+        float h = titleSize.height * 0.95f;
+        float scale = h / std::max(1.f, icon->getContentSize().height);
+        float w = icon->getContentSize().width * scale;
+        float gap = 4.f;
+        auto centre = title->getPosition();
+        title->setPositionX(centre.x + (w + gap) / 2);
+        icon->setPosition(ccp(centre.x - (titleSize.width + gap) / 2, centre.y));
+        icon->setID("end-icon-left"_spr);
+        parent->addChild(icon, title->getZOrder());
+        pop(icon, scale, 0.15f);
+        return;
+    }
+
+    // two icons: one either side of the title, bobbing gently
+    for (int i = 0; i < 2; i++) {
+        auto file = list[i].asString().unwrapOr("");
+        if (file.empty() || fpFullPath(file).empty()) continue;
+        auto icon = CCSprite::create(file.c_str());
+        if (!icon) continue;
+        float target = titleSize.height;
+        float scale = target / std::max(1.f, icon->getContentSize().height);
+        float side = i == 0 ? -1.f : 1.f;
+        icon->setPosition(title->getPosition() + ccp(side * (titleSize.width / 2 + target / 2 + 6.f), 0));
+        icon->setID(i == 0 ? "end-icon-left"_spr : "end-icon-right"_spr);
+        parent->addChild(icon, title->getZOrder());
+        pop(icon, scale, 0.15f + 0.1f * i);
+        float dy = i == 0 ? 3.f : -3.f;
+        icon->runAction(CCRepeatForever::create(CCSequence::create(
+            CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, dy))),
+            CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, -dy))),
             nullptr
-        );
-        if (i == 1) bob = CCSequence::create(CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, -4.f))),
-                                             CCEaseSineInOut::create(CCMoveBy::create(0.9f, ccp(0, 4.f))), nullptr);
-        icon->runAction(CCRepeatForever::create(bob));
+        )));
     }
 }
 
