@@ -60,7 +60,21 @@ jobs:
         id: ver
         run: echo "version=$(jq -r .version mod.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Create or update the GitHub release for this version
+      - name: Check if this version was already released
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.ver.outputs.version }}" -R "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Never replace a release that already exists (Geode checksums uploaded versions).
+      # To publish a new release, bump "version" in mod.json.
+      - name: Create the GitHub release for this version
+        if: steps.exists.outputs.yes == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.version }}

@@ -1,3 +1,6 @@
+# v1.0.3
+- Node IDs now use the mod's ID prefix, as Geode recommends.
+
 # v1.0.2
 - Hides the new top-right "get the mod" banner that Flameperfect packs show when the mod is missing.
 

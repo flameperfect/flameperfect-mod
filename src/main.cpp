@@ -119,7 +119,7 @@ public:
             m_texLoc.push_back(glGetUniformLocation(p, fmt::format("sprite{}", i).c_str()));
         }
         this->setContentSize(CCDirector::get()->getWinSize());
-        this->setID("flameperfect-background");
+        this->setID("background"_spr);
         this->scheduleUpdate();
         return true;
     }
@@ -174,7 +174,7 @@ class $modify(FPLoadingLayer, LoadingLayer) {
                 auto sz = bg->getContentSize();
                 bg->setScale(std::max(win.width / sz.width, win.height / sz.height));
                 bg->setPosition(win / 2);
-                bg->setID("flameperfect-loading-bg");
+                bg->setID("loading-bg"_spr);
                 int z = 0;
                 for (auto child : CCArrayExt<CCNode*>(this->getChildren())) z = std::min(z, child->getZOrder());
                 if (oldBg) oldBg->setVisible(false);
@@ -337,7 +337,7 @@ class $modify(FPLayer, CCLayer) {
             }
         }
 
-        if (fpBool(j, "all-menus") && !typeinfo_cast<MenuLayer*>(this) && !this->getChildByID("flameperfect-background")) {
+        if (fpBool(j, "all-menus") && !typeinfo_cast<MenuLayer*>(this) && !this->getChildByID("background"_spr)) {
             auto shader = fpStr(j, "menu-shader");
             if (shader.empty()) return;
             for (auto child : CCArrayExt<CCNode*>(this->getChildren())) {
@@ -353,7 +353,7 @@ class $modify(FPLayer, CCLayer) {
 
         // menus that got the pack background: also hide their ground strip
         // (e.g. the coloured floor under the main levels), so the background shows to the bottom
-        if (fpBool(j, "menu-hide-ground") && this->getChildByID("flameperfect-background")) {
+        if (fpBool(j, "menu-hide-ground") && this->getChildByID("background"_spr)) {
             for (auto child : CCArrayExt<CCNode*>(this->getChildren())) {
                 if (typeinfo_cast<GJGroundLayer*>(child)) child->setVisible(false);
             }

@@ -5,7 +5,7 @@
     },
     "id": "flameperfect.flameperfect",
     "name": "Flameperfect",
-    "version": "v1.0.2",
+    "version": "v1.0.3",
     "developer": "Flameperfect",
     "description": "Powers Flameperfect texture packs: your own icons on the title screen, custom menu and loading-screen backgrounds, themed effects and more. Does nothing unless a Flameperfect pack is applied.",
     "early-load": true,
