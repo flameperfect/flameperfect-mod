@@ -1,3 +1,6 @@
+# v1.2.8
+- Loading scenes keep up with GD even when it lags, so every stage shows; the menu never goes back to the start of the scene.
+
 # v1.2.7
 - If GD finishes loading before the loading scene is done, the menu carries the scene on and finishes the change smoothly (sound too), so there is no sudden cut.
 - Loading scenes glide with progress instead of jumping.

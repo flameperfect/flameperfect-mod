@@ -242,7 +242,7 @@ public:
         s_bgTime = m_time;
         if (m_handoff) {
             m_hand += dt;
-            float len = std::max(2.0f, (1.f - m_handFrom) * 5.f);
+            float len = std::max(1.5f, (1.f - m_handFrom) * 6.f);
             float k = fpSmooth(0.f, len, m_hand);
             m_progress = m_handFrom + (1.f - m_handFrom) * k;
             fpAmbProgress(m_progress);
@@ -251,6 +251,8 @@ public:
         }
         // ease towards the real progress at a gentle pace, so the scene glides instead of jumping
         m_progress += (m_progressTarget - m_progress) * std::min(1.f, dt * 1.6f);
+        // GD lags while loading, so never fall far behind the real progress: every stage still shows
+        m_progress = std::max(m_progress, m_progressTarget - 0.08f);
         if (m_isLoading) { fpAmbProgress(m_progress); s_loadEnd = m_progress; }
     }
     bool m_isLoading = false;
@@ -824,7 +826,7 @@ class $modify(FPMenuLayer, MenuLayer) {
         // background
         auto shader = fpStr(j, "menu-shader");
         static bool s_handedOff = false;
-        bool handoff = !s_handedOff && !s_loadShader.empty() && s_loadEnd < 0.995f;
+        bool handoff = !s_handedOff && !s_loadShader.empty() && s_loadEnd >= 0.7f && s_loadEnd < 0.995f;
         s_handedOff = true;
         if (!shader.empty() && m_menuGameLayer) {
             if (auto bg = FPBackground::create(handoff ? s_loadShader : shader)) {
