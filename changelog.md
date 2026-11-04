@@ -1,3 +1,6 @@
+# v1.0.2
+- Hides the new top-right "get the mod" banner that Flameperfect packs show when the mod is missing.
+
 # v1.0.1
 - Menus that use the pack background (like the main levels screen) now hide their ground strip too, so the background goes all the way down.
 

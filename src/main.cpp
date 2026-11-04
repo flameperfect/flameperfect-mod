@@ -271,13 +271,14 @@ class $modify(FPMenuLayer, MenuLayer) {
         if (!pj) return true;
         auto j = *pj;
 
-        // reminder: swap the Daily button's "install the mod" artwork for the clean one
+        // reminder: swap the Daily button's "get the mod" artwork for the clean one.
+        // setDisplayFrame also resets the frame offset the pack uses to draw the
+        // reminder banner away from the chest (in the top-right corner).
         if (!fpFullPath("fp_daily_clean.png").empty()) {
             if (auto btn = fpFindButton(this, "GJ_dailyRewardBtn_001.png")) {
                 if (auto clean = CCSprite::create("fp_daily_clean.png")) {
                     if (auto spr = typeinfo_cast<CCSprite*>(btn->getNormalImage())) {
-                        spr->setTexture(clean->getTexture());
-                        spr->setTextureRect(clean->getTextureRect(), clean->isTextureRectRotated(), clean->getContentSize());
+                        spr->setDisplayFrame(clean->displayFrame());
                         btn->setContentSize(spr->getScaledContentSize());
                         spr->setPosition(btn->getContentSize() / 2);
                     }

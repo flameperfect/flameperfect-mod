@@ -16,7 +16,7 @@ Each pack picks which of these it uses:
 - **LEVEL COMPLETE fly-in.** The text flies into the end-screen popup.
 - **Themed chest glow.** Chest openings glow in the pack's colour instead of blue.
 - **Colour fixes for other mods.** Things other mods colour themselves (like the Integrated Demonlist search bar) are recoloured to match the pack.
-- **Removes the mod reminder.** Flameperfect packs show a "get the Flameperfect mod" note when the mod is missing. Installing the mod hides it.
+- **Removes the mod reminder.** Flameperfect packs show a "Get the Flameperfect mod" banner in the top-right corner when the mod is missing. Installing the mod hides it.
 
 ## How to use it
 
