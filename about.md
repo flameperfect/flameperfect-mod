@@ -18,6 +18,7 @@ Each pack picks which of these it uses:
 - **Themed popups.** The end screen and pause menu can be tinted to the pack, with bubbles rising through them.
 - **Icons on the end screen.** One custom icon attached to LEVEL COMPLETE, or two either side.
 - **Themed chest glow.** Chest openings glow in the pack's colour instead of blue.
+- **No more brown boxes.** GD's brown list outlines and text boxes (profiles, messages, friends, settings) can be recoloured to match the pack.
 - **Colour fixes for other mods.** Things other mods colour themselves (like the Integrated Demonlist search bar) are recoloured to match the pack.
 - **Removes the mod reminder.** Flameperfect packs show a "Get the Flameperfect mod" banner in the top-right corner when the mod is missing. Installing the mod hides it.
 
@@ -35,4 +36,4 @@ Get packs or order your own custom pack: [ko-fi.com/flameperfect](https://ko-fi.
 
 ## For pack makers
 
-Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `startup-intro`, `startup-sound`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.
+Add a `flameperfect.json` to your pack. Keys: `own-menu-icons`, `menu-shader`, `menu-hide-ground`, `all-menus`, `loading-background`, `loading-color`, `loading-messages`, `loading-shader`, `startup-intro`, `startup-sound`, `level-complete-flyin`, `chest-glow`, `end-screen-icons`, `end-screen-bubbles`, `end-screen-color`, `pause-color`, `pause-bubbles`, `pause-hide-background`, `ui-brown-to`, `node-colors`, `links`. See the comment at the top of `src/main.cpp`.

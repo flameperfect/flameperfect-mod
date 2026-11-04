@@ -1,3 +1,6 @@
+# v1.0.14
+- Packs can recolour GD's brown list outlines and text boxes (`ui-brown-to`), which can't be changed with textures alone.
+
 # v1.0.13
 - Startup intros: packs can play their own animated intro (with sound) when GD opens (`startup-intro`, `startup-sound`). No extra mod needed. Click to skip, or turn it off in the mod's settings.
 

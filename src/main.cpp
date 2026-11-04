@@ -22,6 +22,7 @@
 //    "end-screen-color":     [r,g,b]         tint of the end-screen panel
 //    "pause-color":          [r,g,b]         tint of the pause-menu panel
 //    "pause-hide-background": true           no dark panel behind the pause menu
+//    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log the end-screen / pause-menu layout (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
@@ -197,6 +198,48 @@ static std::string fpTextureName(CCTexture2D* tex) {
 static void fpDumpTree(CCNode* root, char const* label);
 
 // ---------------------------------------------------------------------------
+// GD's brown UI tints: list outlines, text-box fills and other rounded boxes are white
+// "square" pictures that GD tints brown in code, so a texture pack can't recolour them.
+// With "ui-brown-to": [r,g,b] those brown tints become that colour (darker browns
+// become a matching darker shade). Only touches the rounded-box pictures, never icons.
+#include <Geode/modify/CCSprite.hpp>
+
+static std::optional<ccColor3B> s_brownTo;
+static std::unordered_map<CCTexture2D*, bool> s_squareTex;
+
+static void fpRefreshBrown() {
+    auto pj = fpPack();
+    s_brownTo = pj ? fpColorKey(*pj, "ui-brown-to") : std::nullopt;
+}
+static bool fpIsBrown(ccColor3B c) {
+    return c.r > c.g && c.g > c.b && c.r - c.b >= 50 && c.r <= 230 && c.b <= 120;
+}
+static bool fpIsSquareTexture(CCTexture2D* tex) {
+    if (!tex) return false;
+    auto it = s_squareTex.find(tex);
+    if (it != s_squareTex.end()) return it->second;
+    auto name = fpTextureName(tex);
+    auto slash = name.find_last_of("/\\");
+    if (slash != std::string::npos) name = name.substr(slash + 1);
+    bool square = name.rfind("square0", 0) == 0 || name.rfind("GJ_square", 0) == 0;
+    s_squareTex[tex] = square;
+    return square;
+}
+
+class $modify(FPSprite, CCSprite) {
+    void setColor(ccColor3B const& color) {
+        if (s_brownTo && fpIsBrown(color) && fpIsSquareTexture(this->getTexture())) {
+            auto lum = [](ccColor3B c) { return 0.30f * c.r + 0.59f * c.g + 0.11f * c.b; };
+            float k = std::clamp(lum(color) / lum({ 130, 64, 32 }), 0.2f, 1.0f);
+            auto ch = [&](GLubyte v) { return (GLubyte)std::clamp((int)(v * k + 0.5f), 0, 255); };
+            CCSprite::setColor({ ch(s_brownTo->r), ch(s_brownTo->g), ch(s_brownTo->b) });
+            return;
+        }
+        CCSprite::setColor(color);
+    }
+};
+
+// ---------------------------------------------------------------------------
 // Mod reminder on the logo: packs draw a "get the mod" banner off the GEOMETRY DASH
 // logo (using the frame offset). With the mod installed, swap in the clean logo.
 static CCSprite* fpFindSprite(CCNode* node, char const* frame, int depth = 0) {
@@ -227,6 +270,8 @@ static std::string s_loadingMsg;
 class $modify(FPLoadingLayer, LoadingLayer) {
     bool init(bool refresh) {
         if (!LoadingLayer::init(refresh)) return false;
+        s_squareTex.clear();
+        fpRefreshBrown();
         fpCleanLogo(this);
         auto pj = fpPack();
         matjson::Value j = pj ? *pj : matjson::Value();
@@ -500,6 +545,8 @@ public:
 class $modify(FPMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
+        s_squareTex.clear();
+        fpRefreshBrown();
         auto pj = fpPack();
         if (!pj) return true;
         auto j = *pj;
