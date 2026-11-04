@@ -1,3 +1,6 @@
+# v1.0.15
+- Pack-maker debug option now also reports where GD's brown tints come from.
+
 # v1.0.14
 - Packs can recolour GD's brown list outlines and text boxes (`ui-brown-to`), which can't be changed with textures alone.
 

@@ -205,11 +205,13 @@ static void fpDumpTree(CCNode* root, char const* label);
 #include <Geode/modify/CCSprite.hpp>
 
 static std::optional<ccColor3B> s_brownTo;
+static bool s_debugLayout = false;
 static std::unordered_map<CCTexture2D*, bool> s_squareTex;
 
 static void fpRefreshBrown() {
     auto pj = fpPack();
     s_brownTo = pj ? fpColorKey(*pj, "ui-brown-to") : std::nullopt;
+    s_debugLayout = pj && fpBool(*pj, "debug-layout");
 }
 static bool fpIsBrown(ccColor3B c) {
     return c.r > c.g && c.g > c.b && c.r - c.b >= 50 && c.r <= 230 && c.b <= 120;
@@ -228,6 +230,17 @@ static bool fpIsSquareTexture(CCTexture2D* tex) {
 
 class $modify(FPSprite, CCSprite) {
     void setColor(ccColor3B const& color) {
+        if (s_debugLayout && fpIsBrown(color)) {
+            // pack-maker debugging: report where brown tints come from (once each)
+            static std::set<std::string> seen;
+            auto tex = fpTextureName(this->getTexture());
+            auto slash = tex.find_last_of("/\\");
+            if (slash != std::string::npos) tex = tex.substr(slash + 1);
+            auto parent = this->getParent();
+            auto key = fmt::format("{},{},{} {} {}", color.r, color.g, color.b, tex,
+                parent ? std::string(getObjectName(parent)) : std::string("-"));
+            if (seen.insert(key).second) log::info("Flameperfect brown tint: {} parent-id='{}'", key, parent ? parent->getID() : "");
+        }
         if (s_brownTo && fpIsBrown(color) && fpIsSquareTexture(this->getTexture())) {
             auto lum = [](ccColor3B c) { return 0.30f * c.r + 0.59f * c.g + 0.11f * c.b; };
             float k = std::clamp(lum(color) / lum({ 130, 64, 32 }), 0.2f, 1.0f);
@@ -874,7 +887,7 @@ static void fpDumpTree(CCNode* root, char const* label) {
                 typeinfo_cast<CCRGBAProtocol*>(c) ? (int)typeinfo_cast<CCRGBAProtocol*>(c)->getColor().g : -1,
                 typeinfo_cast<CCRGBAProtocol*>(c) ? (int)typeinfo_cast<CCRGBAProtocol*>(c)->getColor().b : -1,
                 tex);
-            if (d < 4) dump(c, d + 1);
+            if (d < 8) dump(c, d + 1);
         }
     };
     dump(root, 1);
