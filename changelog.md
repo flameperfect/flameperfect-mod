@@ -1,3 +1,6 @@
+# v1.2.9
+- The menu always shows its own scene straight away (never the loading scene).
+
 # v1.2.8
 - Loading scenes keep up with GD even when it lags, so every stage shows; the menu never goes back to the start of the scene.
 

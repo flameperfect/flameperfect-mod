@@ -826,7 +826,7 @@ class $modify(FPMenuLayer, MenuLayer) {
         // background
         auto shader = fpStr(j, "menu-shader");
         static bool s_handedOff = false;
-        bool handoff = !s_handedOff && !s_loadShader.empty() && s_loadEnd >= 0.7f && s_loadEnd < 0.995f;
+        bool handoff = false;   // the menu always shows its own (night) scene
         s_handedOff = true;
         if (!shader.empty() && m_menuGameLayer) {
             if (auto bg = FPBackground::create(handoff ? s_loadShader : shader)) {
