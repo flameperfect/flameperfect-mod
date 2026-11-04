@@ -110,6 +110,7 @@ public:
     std::vector<GLint> m_texLoc;
     GLint m_resLoc = -1, m_timeLoc = -1, m_progLoc = -1;
     float m_progress = 0.f;      // loading progress 0..1 (only moves on the loading screen)
+    float m_progressTarget = 0.f;
     float m_time = 0.f;
 
     static FPBackground* create(std::string const& shaderFile) {
@@ -170,7 +171,11 @@ public:
         return true;
     }
     ~FPBackground() override { if (m_prog) m_prog->release(); }
-    void update(float dt) override { m_time += dt; }
+    void update(float dt) override {
+        m_time += dt;
+        // ease towards the real progress so scenes change smoothly, not in jumps
+        m_progress += (m_progressTarget - m_progress) * std::min(1.f, dt * 2.5f);
+    }
     void draw() override {
         if (!m_prog) return;
         ccGLUseProgram(m_prog->getProgram());
@@ -344,7 +349,7 @@ class $modify(FPLoadingLayer, LoadingLayer) {
         LoadingLayer::updateProgress(progress);
         // shaders can read this as "uniform float progress" (0 at the start, 1 when loaded)
         if (auto bg = typeinfo_cast<FPBackground*>(this->getChildByID("loading-shader"_spr))) {
-            bg->m_progress = std::clamp(progress / 100.f, 0.f, 1.f);
+            bg->m_progressTarget = std::clamp(progress / 100.f, 0.f, 1.f);
         }
     }
     char const* getLoadingString() {

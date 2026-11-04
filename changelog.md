@@ -1,3 +1,6 @@
+# v1.2.4
+- Loading progress changes smoothly instead of in jumps.
+
 # v1.2.3
 - Loading screen animations can follow how far GD has loaded (for scenes that change as it loads).
 
