@@ -111,6 +111,11 @@ static FMOD::Sound* s_ambSnd[2] = { nullptr, nullptr };
 static FMOD::Channel* s_ambCh[2] = { nullptr, nullptr };
 static float s_ambLevel[2] = { 0.f, 0.f };
 static float s_bgTime = 0.f;      // shared shader clock, so the menu carries on from the loading screen
+// loading -> menu handoff: if GD finishes loading before the loading scene reaches its end,
+// the menu keeps showing the loading scene and finishes the change smoothly
+static std::string s_loadShader;
+static float s_loadEnd = 1.f;
+static bool s_handoffActive = false;
 static float fpSmooth(float a, float b, float x) { float t = std::clamp((x - a) / (b - a), 0.f, 1.f); return t * t * (3.f - 2.f * t); }
 static void fpAmbStop() {
     for (int i = 0; i < 2; i++) {
@@ -148,14 +153,15 @@ static void fpAmbProgress(float p) {
 // on the menu: the night sound carries on, then fades away
 class FPAmbFade : public CCNode {
 public:
-    float m_t = 0.f, m_len = 6.f;
+    float m_t = 0.f, m_len = 7.f;
     static FPAmbFade* create() { auto r = new FPAmbFade(); r->init(); r->autorelease(); r->scheduleUpdate(); return r; }
     void update(float dt) override {
+        if (s_handoffActive) return;          // the background is still finishing the day -> night change
         m_t += dt;
-        float g = std::min(1.f, dt * 4.f);
+        float g = std::min(1.f, dt * 1.5f);
         s_ambLevel[0] += (0.f - s_ambLevel[0]) * g;
         s_ambLevel[1] += (1.f - s_ambLevel[1]) * g;
-        float k = std::clamp(1.f - std::max(0.f, m_t - 1.5f) / (m_len - 1.5f), 0.f, 1.f);
+        float k = std::clamp(1.f - std::max(0.f, m_t - 2.0f) / (m_len - 2.0f), 0.f, 1.f);
         fpAmbApply(k * k);
         if (m_t >= m_len) { fpAmbStop(); this->removeFromParent(); }
     }
@@ -229,15 +235,27 @@ public:
         this->scheduleUpdate();
         return true;
     }
-    ~FPBackground() override { if (m_prog) m_prog->release(); }
+    ~FPBackground() override { if (m_handoff) s_handoffActive = false; if (m_prog) m_prog->release(); }
     void update(float dt) override {
         m_time += dt;
         // ease towards the real progress so scenes change smoothly, not in jumps
-        m_progress += (m_progressTarget - m_progress) * std::min(1.f, dt * (m_progressTarget >= 0.999f ? 8.f : 2.5f));
         s_bgTime = m_time;
-        if (m_isLoading) fpAmbProgress(m_progress);
+        if (m_handoff) {
+            m_hand += dt;
+            float len = std::max(2.0f, (1.f - m_handFrom) * 5.f);
+            float k = fpSmooth(0.f, len, m_hand);
+            m_progress = m_handFrom + (1.f - m_handFrom) * k;
+            fpAmbProgress(m_progress);
+            if (k >= 1.f) { m_handoff = false; s_handoffActive = false; }
+            return;
+        }
+        // ease towards the real progress at a gentle pace, so the scene glides instead of jumping
+        m_progress += (m_progressTarget - m_progress) * std::min(1.f, dt * 1.6f);
+        if (m_isLoading) { fpAmbProgress(m_progress); s_loadEnd = m_progress; }
     }
     bool m_isLoading = false;
+    bool m_handoff = false;
+    float m_handFrom = 0.f, m_hand = 0.f;
     void draw() override {
         if (!m_prog) return;
         ccGLUseProgram(m_prog->getProgram());
@@ -415,6 +433,8 @@ class $modify(FPLoadingLayer, LoadingLayer) {
             if (auto bg = FPBackground::create(shader)) {
                 bg->setID("loading-shader"_spr);
                 bg->m_isLoading = true;
+                s_loadShader = shader;
+                s_loadEnd = 0.f;
                 fpAmbStart(j);
                 if (oldBg) oldBg->setVisible(false);
                 this->addChild(bg, minZ - 1);
@@ -803,8 +823,17 @@ class $modify(FPMenuLayer, MenuLayer) {
 
         // background
         auto shader = fpStr(j, "menu-shader");
+        static bool s_handedOff = false;
+        bool handoff = !s_handedOff && !s_loadShader.empty() && s_loadEnd < 0.995f;
+        s_handedOff = true;
         if (!shader.empty() && m_menuGameLayer) {
-            if (auto bg = FPBackground::create(shader)) {
+            if (auto bg = FPBackground::create(handoff ? s_loadShader : shader)) {
+                if (handoff) {
+                    bg->m_handoff = true;
+                    bg->m_handFrom = s_loadEnd;
+                    bg->m_progress = s_loadEnd;
+                    s_handoffActive = true;
+                }
                 auto mgl = m_menuGameLayer;
                 int z = 0;
                 for (auto child : CCArrayExt<CCNode*>(mgl->getChildren())) z = std::min(z, child->getZOrder());

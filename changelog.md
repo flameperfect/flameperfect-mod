@@ -1,3 +1,7 @@
+# v1.2.7
+- If GD finishes loading before the loading scene is done, the menu carries the scene on and finishes the change smoothly (sound too), so there is no sudden cut.
+- Loading scenes glide with progress instead of jumping.
+
 # v1.2.6
 - Loading screens can play a day sound that crossfades into a night sound as GD loads, carrying on into the menu ("loading-sound-day" / "loading-sound-night").
 - The menu background carries on from the loading screen without jumping.
