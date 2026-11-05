@@ -26,7 +26,7 @@
 //    "ui-brown-to":          [r,g,b]         GD's brown list outlines / text boxes become this colour
 //    "loading-sound-day" / "loading-sound-night": "a.ogg"   looping sounds that crossfade with loading progress
 //                            (or just put ambience/day.ogg + ambience/night.ogg in the pack)
-//    "menu-music":           "song.mp3"      the pack's own menu music, from the start-up screen through every menu
+//    "menu-music":           "song.mp3"      the pack's own menu music: main menu and every menu after it
 //                            (or just put music/menu.mp3 in the pack)
 //    "startup-intro" / "startup-sound": or just put intro/intro.webp + intro/intro.mp3 in the pack
 //    "tint-swaps":           [{"texture":"GJ_progressBar_001","from":[0,255,0],"to":[r,g,b]}]  swap a colour GD tints a picture with
@@ -59,6 +59,11 @@ using namespace geode::prelude;
 static std::string fpFullPath(std::string const& name) {
     auto fu = CCFileUtils::sharedFileUtils();
     auto full = std::string(fu->fullPathForFilename(name.c_str(), false));
+    if (!full.empty() && fu->isFileExist(full)) return full;
+    // the pack's files may have moved (e.g. Texture Loader re-unpacked it): forget cached
+    // locations and look again once, so the engine doesn't silently switch itself off
+    fu->purgeCachedEntries();
+    full = std::string(fu->fullPathForFilename(name.c_str(), false));
     if (full.empty() || !fu->isFileExist(full)) return "";
     return full;
 }
@@ -440,12 +445,7 @@ static std::string s_loadingMsg;
 class $modify(FPLoadingLayer, LoadingLayer) {
     bool init(bool refresh) {
         if (!LoadingLayer::init(refresh)) return false;
-        // the pack's own menu music (music/menu.mp3) starts on the start-up screen
-        if (auto pjm = fpPack()) {
-            auto music = fpMenuMusic(*pjm);
-            auto fm = FMODAudioEngine::get();
-            if (!music.empty() && fm && !fm->isMusicPlaying(music, 0)) fm->playMusic(music, true, 1.5f, 0);
-        }
+
         s_squareTex.clear();
         fpRefreshBrown();
         fpCleanLogo(this);

@@ -1,3 +1,7 @@
+# v1.3.3
+- Pack menu music now starts on the main menu (not the loading screen).
+- If the pack's files move while GD is open, the engine looks them up again instead of switching itself off.
+
 # v1.3.1
 - Packs can have their own menu music (music/menu.mp3): it starts on the start-up screen and carries on through every menu.
 - Packs can just drop files in folders instead of naming them: music/, ambience/ (day + night), intro/.
