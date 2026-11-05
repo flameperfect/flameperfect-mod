@@ -46,6 +46,7 @@
 //  pictures. With the mod installed, those clean pictures are swapped in so the note disappears.
 // =============================================================================
 #include <Geode/Geode.hpp>
+#include <Geode/ui/SceneManager.hpp>
 #include <algorithm>
 #include <functional>
 #include <set>
@@ -444,6 +445,7 @@ static void fpCleanLogo(CCNode* layer) {
 // Loading screen
 #include <Geode/modify/LoadingLayer.hpp>
 
+static void fpStartIntro(matjson::Value const& j);
 static std::string s_loadingMsg;
 
 class $modify(FPLoadingLayer, LoadingLayer) {
@@ -455,6 +457,7 @@ class $modify(FPLoadingLayer, LoadingLayer) {
         fpCleanLogo(this);
         auto pj = fpPack();
         matjson::Value j = pj ? *pj : matjson::Value();
+        if (pj && !refresh) fpStartIntro(j);
 
         CCSprite* oldBg = nullptr;   // GD's background = game_bg_01 tinted (0,102,255)
         for (auto child : CCArrayExt<CCNode*>(this->getChildren())) {
@@ -786,15 +789,13 @@ public:
         // the first frame after loading is a long one: start the clock from the next
         if (!m_started) { m_started = true; this->start(); return; }
         m_time += std::min(dt, 0.1f);
-        // the picture leads; if decoding a big intro falls behind, pull the sound back to the
-        // picture so its hits (dings, drops) still land on the right frames
+        // keep the picture in sync with the sound
         if (m_channel) {
             bool playing = false;
             unsigned int ms = 0;
             if (m_channel->isPlaying(&playing) == FMOD_OK && playing
                 && m_channel->getPosition(&ms, FMOD_TIMEUNIT_MS) == FMOD_OK) {
-                float audio = ms / 1000.f;
-                if (std::fabs(audio - m_time) > 0.08f) m_channel->setPosition((unsigned int)(m_time * 1000.f), FMOD_TIMEUNIT_MS);
+                m_time = ms / 1000.f;
             }
         }
         int now = (int)(m_time * 1000.f);
@@ -821,6 +822,7 @@ public:
         m_spr->runAction(CCFadeOut::create(0.35f));
         m_black->runAction(CCFadeOut::create(0.35f));
         s_introRunning = false;
+        SceneManager::get()->forget(this);
         fpShowPendingUpdate();
         this->runAction(CCSequence::create(
             CCDelayTime::create(0.4f),
@@ -828,6 +830,31 @@ public:
             nullptr));
     }
 };
+
+static bool s_introPlayed = false;
+// Startup intro: plays as soon as GD starts (over the loading screen) and keeps playing
+// across the switch to the main menu, so it IS the start-up rather than coming after it.
+static void fpStartIntro(matjson::Value const& j) {
+    if (s_introPlayed) return;
+    s_introPlayed = true;
+    auto intro = fpPackAsset(j, "startup-intro", { "intro/intro.webp" });
+    if (intro.empty()) {
+        if (!fpStr(j, "startup-intro").empty()) log::warn("Flame Engine: intro file not found: {}", fpStr(j, "startup-intro"));
+        return;
+    }
+    if (!Mod::get()->getSettingValue<bool>("play-intro")) return;
+    auto layer = FPIntro::create(intro, fpPackAsset(j, "startup-sound", { "intro/intro.mp3", "intro/intro.ogg", "intro/intro.wav" }));
+    if (!layer) { log::warn("Flame Engine: startup intro couldn't be opened ({})", intro); return; }
+    s_introRunning = true;
+    Ref<FPIntro> keep = layer;
+    Loader::get()->queueInMainThread([keep]() {
+        auto scene = CCDirector::get()->getRunningScene();
+        if (!scene) { s_introRunning = false; return; }
+        scene->addChild(keep, 100000);
+        SceneManager::get()->keepAcrossScenes(keep);
+        log::info("Flame Engine: startup intro playing");
+    });
+}
 
 class $modify(FPMenuLayer, MenuLayer) {
     bool init() {
@@ -846,29 +873,8 @@ class $modify(FPMenuLayer, MenuLayer) {
             this->addChild(FPAmbKeeper::create());
         }
 
-        // startup intro, once per launch
-        static bool s_introPlayed = false;
-        if (!s_introPlayed) {
-            s_introPlayed = true;
-            auto intro = fpPackAsset(j, "startup-intro", { "intro/intro.webp" });
-            if (intro.empty() && !fpStr(j, "startup-intro").empty()) log::warn("Flame Engine: intro file not found: {}", fpStr(j, "startup-intro"));
-            if (!intro.empty() && Mod::get()->getSettingValue<bool>("play-intro")) {
-                if (auto layer = FPIntro::create(intro, fpPackAsset(j, "startup-sound", { "intro/intro.mp3", "intro/intro.ogg", "intro/intro.wav" }))) {
-                    // on top of the whole scene, so nothing the menu (or another mod) adds later covers it
-                    s_introRunning = true;
-                    Ref<FPIntro> keep = layer;
-                    Ref<MenuLayer> self = this;
-                    Loader::get()->queueInMainThread([keep, self]() {
-                        auto scene = self->getParent() ? self->getParent() : CCDirector::get()->getRunningScene();
-                        if (scene) scene->addChild(keep, 100000);
-                        else s_introRunning = false;
-                        log::info("Flame Engine: startup intro playing");
-                    });
-                } else {
-                    log::warn("Flame Engine: startup intro couldn't be opened ({})", intro);
-                }
-            }
-        }
+        // startup intro (normally already started on the loading screen)
+        fpStartIntro(j);
 
         // Mod reminder: packs draw a "get the mod" banner off one of these pictures
         // (using the frame offset, so it shows in the top-right corner). With the mod

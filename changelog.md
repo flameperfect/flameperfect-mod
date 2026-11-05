@@ -1,3 +1,6 @@
+# v1.3.8
+- Startup intros now play as GD starts (over the loading screen) and carry on into the menu, instead of after loading.
+
 # v1.3.7
 - Startup intros show on top of everything again, and their sound stays in time with the picture.
 - Animated menu backgrounds run at the right speed when more than one menu is open.
