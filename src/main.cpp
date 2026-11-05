@@ -1017,7 +1017,7 @@ static void fpRebrownTree(CCNode* node, int depth = 0) {
                 auto lum = [](ccColor3B x) { return 0.30f * x.r + 0.59f * x.g + 0.11f * x.b; };
                 float k = std::clamp(lum(c) / lum({ 130, 64, 32 }), 0.2f, 1.0f);
                 auto ch = [&](GLubyte v) { return (GLubyte)std::clamp((int)(v * k + 0.5f), 0, 255); };
-                rgba->setColor({ ch(s_brownTo->r), ch(s_brownTo->g), ch(s_brownTo->b) });
+                rgba->setColor(ccColor3B{ ch(s_brownTo->r), ch(s_brownTo->g), ch(s_brownTo->b) });
             }
         }
     }
