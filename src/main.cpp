@@ -46,7 +46,7 @@
 //  pictures. With the mod installed, those clean pictures are swapped in so the note disappears.
 // =============================================================================
 #include <Geode/Geode.hpp>
-#include <Geode/ui/SceneManager.hpp>
+#include <Geode/ui/OverlayManager.hpp>
 #include <algorithm>
 #include <functional>
 #include <set>
@@ -822,7 +822,6 @@ public:
         m_spr->runAction(CCFadeOut::create(0.35f));
         m_black->runAction(CCFadeOut::create(0.35f));
         s_introRunning = false;
-        SceneManager::get()->forget(this);
         fpShowPendingUpdate();
         this->runAction(CCSequence::create(
             CCDelayTime::create(0.4f),
@@ -847,13 +846,9 @@ static void fpStartIntro(matjson::Value const& j) {
     if (!layer) { log::warn("Flame Engine: startup intro couldn't be opened ({})", intro); return; }
     s_introRunning = true;
     Ref<FPIntro> keep = layer;
-    Loader::get()->queueInMainThread([keep]() {
-        auto scene = CCDirector::get()->getRunningScene();
-        if (!scene) { s_introRunning = false; return; }
-        scene->addChild(keep, 100000);
-        SceneManager::get()->keepAcrossScenes(keep);
-        log::info("Flame Engine: startup intro playing");
-    });
+    // the overlay is drawn above every scene and survives the switch from loading to the menu
+    OverlayManager::get()->addChild(keep, 100000);
+    log::info("Flame Engine: startup intro playing");
 }
 
 class $modify(FPMenuLayer, MenuLayer) {
