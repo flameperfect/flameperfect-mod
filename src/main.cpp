@@ -30,6 +30,7 @@
 //                            (or just put music/menu.mp3 in the pack)
 //    "startup-intro" / "startup-sound": or just put intro/intro.webp + intro/intro.mp3 in the pack
 //    "tint-swaps":           [{"texture":"GJ_progressBar_001","from":[0,255,0],"to":[r,g,b]}]  swap a colour GD tints a picture with
+//    "end-screen-stream":    true            the same slow endless stream on the end screen
 //    "pause-bubbles":        true            bubbles drift up while paused (uses end-screen-bubbles' picture)
 //    "debug-layout":         true            log menu layouts + where brown tints come from (for pack makers)
 //    "end-screen-icons":     ["a.png"] or ["a.png","b.png"]  1 icon = attached in front of LEVEL COMPLETE, 2 = one each side
@@ -1405,6 +1406,8 @@ class $modify(FPEndLevelLayer, EndLevelLayer) {
         EndLevelLayer::showLayer(instant);
         fpAddEndIcons(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
         fpEndBubbles(this);
+        if (auto pj = fpPack(); pj && fpBool(*pj, "end-screen-stream"))
+            fpBubbleStream(this, fpStr(*pj, "end-screen-bubbles"));
         if (!s_completeText || !s_completeText->getParent()) return;
         auto title = fpFindComplete(this->m_mainLayer ? (CCNode*)this->m_mainLayer : (CCNode*)this);
         if (!title) return;

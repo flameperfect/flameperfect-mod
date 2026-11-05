@@ -1,3 +1,6 @@
+# v1.3.5
+- "end-screen-stream": the slow pause-menu stream of bubbles/stars on the end screen too.
+
 # v1.3.4
 - Brown panels and search bars that other mods draw themselves now follow the pack's list colours too (also while their lists are loading).
 
