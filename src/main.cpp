@@ -1025,6 +1025,15 @@ static void fpRebrownTree(CCNode* node, int depth = 0) {
         if (c.r == 191 && c.g == 114 && c.b == 62) { if (auto col = fpListColor("list-bg")) lc->setColor(*col); }
         else if (c.r == 161 && c.g == 88 && c.b == 44) { if (auto col = fpListColor("list-cell-odd")) lc->setColor(*col); }
         else if (c.r == 194 && c.g == 114 && c.b == 62) { if (auto col = fpListColor("list-cell-even")) lc->setColor(*col); }
+        else if (fpIsBrown(c)) {
+            // other brown panels mods draw themselves: the pack's list colour, kept as light/dark as the original
+            if (auto col = fpListColor("list-bg")) {
+                auto lum = [](ccColor3B x) { return 0.30f * x.r + 0.59f * x.g + 0.11f * x.b; };
+                float k = std::clamp(lum(c) / lum({ 191, 114, 62 }), 0.3f, 1.3f);
+                auto ch = [&](GLubyte v) { return (GLubyte)std::clamp((int)(v * k + 0.5f), 0, 255); };
+                lc->setColor(ccColor3B{ ch(col->r), ch(col->g), ch(col->b) });
+            }
+        }
     } else if (s_brownTo && !typeinfo_cast<CCLabelBMFont*>(node)) {
         if (auto rgba = typeinfo_cast<CCRGBAProtocol*>(node)) {
             auto c = rgba->getColor();

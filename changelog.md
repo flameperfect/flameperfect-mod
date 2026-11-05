@@ -1,3 +1,6 @@
+# v1.3.9
+- Any brown panel another mod draws (like Integrated Demonlist's list page) now takes the pack's list colour.
+
 # v1.3.8
 - Startup intros now play as GD starts (over the loading screen) and carry on into the menu, instead of after loading.
 

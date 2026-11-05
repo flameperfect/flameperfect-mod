@@ -5,7 +5,7 @@
     },
     "id": "flameperfect.flameperfect",
     "name": "The Flame Engine",
-    "version": "v1.3.8",
+    "version": "v1.3.9",
     "developer": "Flameperfect",
     "description": "Brings my Flameperfect texture packs to life: startup intros, animated menus and loading screens, themed lists and popups.",
     "early-load": true,
