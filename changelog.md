@@ -1,3 +1,6 @@
+# v1.3.4
+- Brown panels and search bars that other mods draw themselves now follow the pack's list colours too (also while their lists are loading).
+
 # v1.3.3
 - Pack menu music now starts on the main menu (not the loading screen).
 - If the pack's files move while GD is open, the engine looks them up again instead of switching itself off.

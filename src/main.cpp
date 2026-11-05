@@ -998,12 +998,44 @@ class $modify(FPProfilePage, ProfilePage) {
     }
 };
 
+// Other mods' menus build GD-style brown panels themselves (a brown CCLayerColor list background,
+// brown search bars) without going through GD's list classes: recolour those by colour too.
+static void fpRebrownTree(CCNode* node, int depth = 0) {
+    if (!node || depth > 8) return;
+    if (auto lc = typeinfo_cast<CCLayerColor*>(node)) {
+        auto c = lc->getColor();
+        if (c.r == 191 && c.g == 114 && c.b == 62) { if (auto col = fpListColor("list-bg")) lc->setColor(*col); }
+        else if (c.r == 161 && c.g == 88 && c.b == 44) { if (auto col = fpListColor("list-cell-odd")) lc->setColor(*col); }
+        else if (c.r == 194 && c.g == 114 && c.b == 62) { if (auto col = fpListColor("list-cell-even")) lc->setColor(*col); }
+    } else if (s_brownTo && !typeinfo_cast<CCLabelBMFont*>(node)) {
+        if (auto rgba = typeinfo_cast<CCRGBAProtocol*>(node)) {
+            auto c = rgba->getColor();
+            bool square = false;
+            if (auto spr = typeinfo_cast<CCSprite*>(node)) square = fpIsSquareTexture(spr->getTexture());
+            else if (typeinfo_cast<CCScale9Sprite*>(node)) square = true;
+            if (square && fpIsBrown(c)) {
+                auto lum = [](ccColor3B x) { return 0.30f * x.r + 0.59f * x.g + 0.11f * x.b; };
+                float k = std::clamp(lum(c) / lum({ 130, 64, 32 }), 0.2f, 1.0f);
+                auto ch = [&](GLubyte v) { return (GLubyte)std::clamp((int)(v * k + 0.5f), 0, 255); };
+                rgba->setColor({ ch(s_brownTo->r), ch(s_brownTo->g), ch(s_brownTo->b) });
+            }
+        }
+    }
+    for (auto child : CCArrayExt<CCNode*>(node->getChildren())) fpRebrownTree(child, depth + 1);
+}
+
 class $modify(FPLayer, CCLayer) {
+    void fpRebrownTick(float) { fpRebrownTree(this); }
     void onEnter() {
         CCLayer::onEnter();
         auto pj = fpPack();
         if (!pj) return;
         auto j = *pj;
+        if (typeinfo_cast<CCScene*>(this->getParent()) && !typeinfo_cast<GJBaseGameLayer*>(this)) {
+            fpRebrownTree(this);
+            // lists fill in after they download: check again a few times
+            this->schedule(schedule_selector(FPLayer::fpRebrownTick), 0.5f, 6, 0.3f);
+        }
 
         fpApplyNodeColors(this);
 
