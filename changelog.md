@@ -1,3 +1,6 @@
+# v1.3.6
+- Small maintenance update.
+
 # v1.3.5
 - "end-screen-stream": the slow pause-menu stream of bubbles/stars on the end screen too.
 
