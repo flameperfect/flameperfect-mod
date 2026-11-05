@@ -270,9 +270,12 @@ public:
     }
     ~FPBackground() override { if (m_handoff) s_handoffActive = false; if (m_prog) m_prog->release(); }
     void update(float dt) override {
-        m_time += dt;
-        // ease towards the real progress so scenes change smoothly, not in jumps
-        s_bgTime = m_time;
+        // one shared clock, moved forward once per frame (several backgrounds can be alive at
+        // once - e.g. a menu under a popup - and each used to push it forward, so it ran too fast)
+        static unsigned int s_lastFrame = 0;
+        auto frame = CCDirector::get()->getTotalFrames();
+        if (frame != s_lastFrame) { s_lastFrame = frame; s_bgTime = std::fmod(s_bgTime + dt, 3600.f); }
+        m_time = s_bgTime;
         if (m_handoff) {
             m_hand += dt;
             float len = std::max(1.5f, (1.f - m_handFrom) * 6.f);
@@ -783,13 +786,15 @@ public:
         // the first frame after loading is a long one: start the clock from the next
         if (!m_started) { m_started = true; this->start(); return; }
         m_time += std::min(dt, 0.1f);
-        // keep the picture in sync with the sound while it plays
+        // the picture leads; if decoding a big intro falls behind, pull the sound back to the
+        // picture so its hits (dings, drops) still land on the right frames
         if (m_channel) {
             bool playing = false;
             unsigned int ms = 0;
             if (m_channel->isPlaying(&playing) == FMOD_OK && playing
                 && m_channel->getPosition(&ms, FMOD_TIMEUNIT_MS) == FMOD_OK) {
-                m_time = ms / 1000.f;
+                float audio = ms / 1000.f;
+                if (std::fabs(audio - m_time) > 0.08f) m_channel->setPosition((unsigned int)(m_time * 1000.f), FMOD_TIMEUNIT_MS);
             }
         }
         int now = (int)(m_time * 1000.f);
@@ -846,10 +851,21 @@ class $modify(FPMenuLayer, MenuLayer) {
         if (!s_introPlayed) {
             s_introPlayed = true;
             auto intro = fpPackAsset(j, "startup-intro", { "intro/intro.webp" });
+            if (intro.empty() && !fpStr(j, "startup-intro").empty()) log::warn("Flame Engine: intro file not found: {}", fpStr(j, "startup-intro"));
             if (!intro.empty() && Mod::get()->getSettingValue<bool>("play-intro")) {
                 if (auto layer = FPIntro::create(intro, fpPackAsset(j, "startup-sound", { "intro/intro.mp3", "intro/intro.ogg", "intro/intro.wav" }))) {
-                    this->addChild(layer, 1000);
+                    // on top of the whole scene, so nothing the menu (or another mod) adds later covers it
                     s_introRunning = true;
+                    Ref<FPIntro> keep = layer;
+                    Ref<MenuLayer> self = this;
+                    Loader::get()->queueInMainThread([keep, self]() {
+                        auto scene = self->getParent() ? self->getParent() : CCDirector::get()->getRunningScene();
+                        if (scene) scene->addChild(keep, 100000);
+                        else s_introRunning = false;
+                        log::info("Flame Engine: startup intro playing");
+                    });
+                } else {
+                    log::warn("Flame Engine: startup intro couldn't be opened ({})", intro);
                 }
             }
         }
