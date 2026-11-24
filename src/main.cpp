@@ -616,7 +616,8 @@ static std::optional<std::pair<std::string, std::string>> s_pendingUpdate;   // 
 static std::optional<arc::TaskHandle<void>> s_updateTask;
 
 static void fpDownloadUpdate(std::string tag, std::string url) {
-    auto target = (dirs::getModsDir() / "flameperfect.flameperfect.geode").toStdPath();
+    auto target = (dirs::getModsDir() / "flameperfect.flameperfect.geode").toStdPath().unwrapOr(std::filesystem::path{});
+    if (target.empty()) return;
     s_updateTask = async::spawn(
         web::WebRequest().userAgent("flame-engine-updater").followRedirects(true).timeout(asp::Duration::fromSecs(60)).get(url),
         [tag, target](web::WebResponse res) {
