@@ -1,3 +1,6 @@
+# v1.4.0
+- Works on Geometry Dash 2.2091 and Geode v6.
+
 # v1.3.9
 - Any brown panel another mod draws (like Integrated Demonlist's list page) now takes the pack's list colour.
 

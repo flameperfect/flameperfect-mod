@@ -52,6 +52,8 @@
 #include <set>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/web.hpp>
+#include <asp/fs/std.hpp>
+#include <filesystem>
 #include <webp/demux.h>
 
 using namespace geode::prelude;
@@ -88,7 +90,7 @@ static std::optional<matjson::Value> fpPack() {
 
     s_path = full;
     s_time = ec ? std::filesystem::file_time_type{} : time;
-    auto res = utils::file::readJson(std::filesystem::path(full));
+    auto res = utils::file::readJson(full);
     if (!res) {
         log::warn("Flameperfect: couldn't read {}: {}", full, res.unwrapErr());
         s_json = std::nullopt;
@@ -221,7 +223,7 @@ public:
         if (!CCNode::init()) return false;
         auto full = fpFullPath(shaderFile);
         if (full.empty()) return false;
-        auto src = utils::file::readString(std::filesystem::path(full));
+        auto src = utils::file::readString(full);
         if (!src) return false;
         std::string frag = src.unwrap();
 
@@ -614,14 +616,14 @@ static std::optional<std::pair<std::string, std::string>> s_pendingUpdate;   // 
 static std::optional<arc::TaskHandle<void>> s_updateTask;
 
 static void fpDownloadUpdate(std::string tag, std::string url) {
-    auto target = dirs::getModsDir() / "flameperfect.flameperfect.geode";
+    auto target = (dirs::getModsDir() / "flameperfect.flameperfect.geode").toStdPath();
     s_updateTask = async::spawn(
-        web::WebRequest().userAgent("flame-engine-updater").followRedirects(true).timeout(std::chrono::seconds(60)).get(url),
+        web::WebRequest().userAgent("flame-engine-updater").followRedirects(true).timeout(asp::Duration::fromSecs(60)).get(url),
         [tag, target](web::WebResponse res) {
             std::error_code ec;
             auto tmp = target;
             tmp += ".download";
-            if (!res.ok() || !res.into(tmp)) {
+            if (!res.ok() || !res.into(tmp.string())) {
                 FLAlertLayer::create("The Flame Engine", "Couldn't download the update. Try again next time you open GD.", "OK")->show();
                 return;
             }
@@ -656,7 +658,7 @@ static void fpCheckForUpdate() {
         web::WebRequest()
             .userAgent("flame-engine-updater")
             .header("Accept", "application/vnd.github+json")
-            .timeout(std::chrono::seconds(10))
+            .timeout(asp::Duration::fromSecs(10))
             .get("https://api.github.com/repos/flameperfect/flameperfect-mod/releases/latest"),
         [](web::WebResponse res) {
             if (!res.ok()) return;
@@ -714,7 +716,7 @@ public:
     }
     bool init(std::string const& webp, std::string const& sound) {
         if (!CCLayer::init()) return false;
-        auto bytes = utils::file::readBinary(std::filesystem::path(webp));
+        auto bytes = utils::file::readBinary(webp);
         if (!bytes) return false;
         m_data = bytes.unwrap();
         WebPData wd{ m_data.data(), m_data.size() };
